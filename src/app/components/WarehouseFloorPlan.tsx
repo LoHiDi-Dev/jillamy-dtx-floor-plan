@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "./ui/card";
 import { cn } from "./ui/utils";
+import type { RotationDeg } from "../types";
 
 type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
@@ -112,7 +113,7 @@ function formatLocation(loc: SelectedLocation) {
   return `${loc.row}-${loc.column}-${loc.spot}`;
 }
 
-export function WarehouseFloorPlan() {
+export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: RotationDeg }) {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -239,6 +240,14 @@ export function WarehouseFloorPlan() {
               hasSelection ? "max-h-[calc(100vh-360px)]" : "max-h-[calc(100vh-260px)]",
             )}
           >
+            <div
+              className="w-fit max-w-full"
+              style={{
+                transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
+                transformOrigin: "center center",
+                transition: "transform 180ms ease",
+              }}
+            >
             <div
               className={cn(
                 "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
@@ -395,6 +404,7 @@ export function WarehouseFloorPlan() {
               <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
                 L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 • Aisles on WEST (top) • Rows on SOUTH (left)
               </div>
+            </div>
             </div>
           </div>
         </CardContent>
