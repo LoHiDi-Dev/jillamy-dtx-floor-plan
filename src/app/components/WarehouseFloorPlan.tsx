@@ -41,7 +41,8 @@ export function WarehouseFloorPlan() {
   // Readability: each cell contains 10 spot “slices” (1–10). Keep enough height + font size
   // so the numbers remain readable across common desktop resolutions.
   const CELL_HEIGHT_CLASS = "h-[clamp(120px,14vh,200px)]";
-  const GRID_MIN_WIDTH_CLASS = "min-w-[1180px]";
+  // Keep the grid from stretching too wide on large monitors.
+  const GRID_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
   const SPOT_TEXT_CLASS = "text-[clamp(10px,0.9vw,14px)]";
 
   const selectedCellCode = React.useMemo(() => {
@@ -125,7 +126,7 @@ export function WarehouseFloorPlan() {
             <div
               className={cn(
                 "grid grid-cols-[24px_56px_repeat(10,minmax(0,1fr))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(10,minmax(0,1fr))_32px] sm:gap-2",
-                GRID_MIN_WIDTH_CLASS,
+                GRID_WIDTH_CLASS,
               )}
             >
               {/* Orientation label */}
