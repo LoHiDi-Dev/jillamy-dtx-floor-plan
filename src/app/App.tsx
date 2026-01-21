@@ -25,7 +25,10 @@ export default function App() {
           {/* Footer */}
           <footer className="shrink-0 border-t border-[#e2e8f0] bg-white/70 px-6 py-3 text-slate-600">
             <div className="mx-auto max-w-7xl text-center text-xs">
-              <p>Jillamy I DTX Warehouse SMART Floor • Location System • JIM Web App • Created: {new Date().toLocaleDateString()}</p>
+              <p>
+                Jillamy I DTX Warehouse SMART Floor • Location System • JIM Web App • Developer: Joel S. Premier •{" "}
+                {new Date().toLocaleDateString()}
+              </p>
               <p className="mt-1 text-slate-500">Warehouse Floor • L-Shaped Layout • Format: ROW-AISLE-SPOT</p>
             </div>
           </footer>

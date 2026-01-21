@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Jillamy DTX warehouse floor plan (React + Vite + Tailwind).",
+  "author": "Joel S. Premier",
   "type": "module",
   "scripts": {
     "build": "node ./node_modules/vite/bin/vite.js build",

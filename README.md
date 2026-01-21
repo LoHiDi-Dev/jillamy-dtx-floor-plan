@@ -2,6 +2,8 @@
 
 Single-page interactive warehouse floor plan built with **React + TypeScript + Vite + Tailwind**.
 
+**Developer:** Joel S. Premier
+
 ## Requirements
 
 - Node.js (LTS recommended)
