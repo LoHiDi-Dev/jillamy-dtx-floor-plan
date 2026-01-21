@@ -15,12 +15,90 @@ type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
 type SelectedLocation = {
   row: RowCode;
   column: number;
-  spot: number | null;
+  bay: number | null;
 };
 
 const ROWS: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G"];
 const COLS = Array.from({ length: 9 }, (_, i) => i + 1);
-const SPOTS = Array.from({ length: 9 }, (_, i) => i + 1);
+const BAYS = Array.from({ length: 10 }, (_, i) => i + 1);
+
+type Location3D = { row: RowCode; aisle: number; bay: number };
+
+const ROW_INDEX: Record<RowCode, number> = {
+  G: 0,
+  F: 1,
+  E: 2,
+  D: 3,
+  C: 4,
+  B: 5,
+  A: 6,
+  I: 7,
+};
+
+const WALK_TIME_ANCHORS: Array<Location3D & { seconds: number }> = [
+  { row: "I", aisle: 1, bay: 1, seconds: 70 },
+  { row: "I", aisle: 9, bay: 9, seconds: 100 },
+  { row: "D", aisle: 6, bay: 9, seconds: 48 },
+  { row: "G", aisle: 1, bay: 9, seconds: 25 },
+  { row: "E", aisle: 5, bay: 5, seconds: 30 },
+];
+
+function parseLocationCode(code: string): Location3D | null {
+  const parts = code.trim().toUpperCase().split("-");
+  if (parts.length !== 3) return null;
+  const row = parts[0] as RowCode;
+  const aisle = Number(parts[1]);
+  const bay = Number(parts[2]);
+  if (!Object.prototype.hasOwnProperty.call(ROW_INDEX, row)) return null;
+  if (!Number.isFinite(aisle) || !Number.isFinite(bay)) return null;
+  return { row, aisle, bay };
+}
+
+function formatMinutesSeconds(totalSeconds: number) {
+  const clamped = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  if (minutes <= 0) return `${seconds} seconds`;
+  const minuteLabel = minutes === 1 ? "minute" : "minutes";
+  if (seconds <= 0) return `${minutes} ${minuteLabel}`;
+  return `${minutes} ${minuteLabel} ${seconds} seconds`;
+}
+
+function estimateWalkSecondsIDW(loc: Location3D) {
+  const ROW_SPAN = 7;
+  const AISLE_SPAN = 8; // aisles 1..9
+  const BAY_SPAN = 9; // bays 1..10
+
+  const eps = 1e-6;
+  const power = 2;
+
+  const rowIndexP = ROW_INDEX[loc.row];
+
+  const anchorSeconds = WALK_TIME_ANCHORS.map((a) => a.seconds);
+  const minAnchorSeconds = Math.min(...anchorSeconds);
+  const maxAnchorSeconds = Math.max(...anchorSeconds);
+
+  let weightedSum = 0;
+  let weightTotal = 0;
+
+  for (const a of WALK_TIME_ANCHORS) {
+    // Exact anchor match -> exact time
+    if (a.row === loc.row && a.aisle === loc.aisle && a.bay === loc.bay) return a.seconds;
+
+    const dr = Math.abs(rowIndexP - ROW_INDEX[a.row]) / ROW_SPAN;
+    const da = Math.abs(loc.aisle - a.aisle) / AISLE_SPAN;
+    const db = Math.abs(loc.bay - a.bay) / BAY_SPAN;
+    const distance = Math.sqrt(dr * dr + da * da + db * db);
+    const w = 1 / Math.pow(distance + eps, power);
+
+    weightedSum += w * a.seconds;
+    weightTotal += w;
+  }
+
+  const pred = weightedSum / weightTotal;
+  const clamped = Math.max(minAnchorSeconds, Math.min(maxAnchorSeconds, pred));
+  return Math.round(clamped);
+}
 
 function isValidCell(row: RowCode, column: number) {
   if (row === "I") return column >= 1 && column <= 9;
@@ -30,18 +108,18 @@ function isValidCell(row: RowCode, column: number) {
 }
 
 function formatLocation(loc: SelectedLocation) {
-  if (!loc.spot) return `${loc.row}-${loc.column}`;
-  return `${loc.row}-${loc.column}-${loc.spot}`;
+  if (!loc.bay) return `${loc.row}-${loc.column}`;
+  return `${loc.row}-${loc.column}-${loc.bay}`;
 }
 
 export function WarehouseFloorPlan() {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
 
-  // Keep selection view + grid the same width to avoid “stretching” when a spot is selected.
+  // Keep selection view + grid the same width to avoid “stretching” when a bay is selected.
   const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
 
-  // Readability: each cell contains 9 spot “slices” (1–9). Keep enough height + font size
+  // Readability: each cell contains 10 bay “slices” (1–10). Keep enough height + font size
   // so the numbers remain readable across common desktop resolutions.
   const CELL_HEIGHT_CLASS = "h-[clamp(96px,12vh,160px)]";
   // Don’t stretch the plan; keep a natural width and center it.
@@ -54,9 +132,16 @@ export function WarehouseFloorPlan() {
   }, [selected]);
 
   const hasSelection = Boolean(selected);
-  const crosshairOn = Boolean(selected?.spot);
+  const crosshairOn = Boolean(selected?.bay);
   const highlightedRow = selected?.row ?? null;
   const highlightedCol = selected?.column ?? null;
+
+  const approxWalkTime = React.useMemo(() => {
+    if (!selected?.bay) return null;
+    const loc3d: Location3D = { row: selected.row, aisle: selected.column, bay: selected.bay };
+    const seconds = estimateWalkSecondsIDW(loc3d);
+    return { seconds, label: formatMinutesSeconds(seconds) };
+  }, [selected]);
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -69,7 +154,7 @@ export function WarehouseFloorPlan() {
               onClick={() => setSelected(null)}
               className="h-8 rounded-[10px] bg-red-500 px-3 text-white shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.18),0px_4px_6px_-4px_rgba(0,0,0,0.18)] hover:bg-red-600"
             >
-              Clear
+              Clear Selection
             </Button>
           </div>
 
@@ -77,7 +162,7 @@ export function WarehouseFloorPlan() {
             <CardHeader className="border-b border-[#e2e8f0]">
               <div className="min-w-0">
                 <CardTitle className="text-[#1e3a8a]">Selected Location</CardTitle>
-                <CardDescription className="text-[#45556c]">Format: ROW-AISLE-SPOT</CardDescription>
+                <CardDescription className="text-[#45556c]">Format: ROW-AISLE-BAY</CardDescription>
               </div>
             </CardHeader>
 
@@ -91,6 +176,11 @@ export function WarehouseFloorPlan() {
                 {selectedCellCode ? (
                   <div className="mt-1 text-xs text-[#45556c]">
                     Cell: <span className="font-mono">{selectedCellCode}</span>
+                  </div>
+                ) : null}
+                {approxWalkTime ? (
+                  <div className="mt-2 text-sm font-semibold text-[#0f172b]">
+                    Approx Walk Time: <span className="font-semibold">{approxWalkTime.label}</span>
                   </div>
                 ) : null}
               </div>
@@ -120,7 +210,7 @@ export function WarehouseFloorPlan() {
             </div>
           </div>
           <CardDescription className="text-[#45556c]">
-            Rows: I, A–G • Columns: 1–9 • Spots: 1–9
+            Rows: I, A–G • Aisles: 1–9 • Bays: 1–10
           </CardDescription>
         </CardHeader>
 
@@ -192,7 +282,7 @@ export function WarehouseFloorPlan() {
                       const valid = isValidCell(r, c);
                       const isSelected = selected?.row === r && selected?.column === c;
                       const isHovered = hovered?.row === r && hovered?.column === c;
-                      const spot = isSelected ? selected?.spot : null;
+                      const bay = isSelected ? selected?.bay : null;
                       if (!valid) {
                         return (
                           <div
@@ -218,10 +308,10 @@ export function WarehouseFloorPlan() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
-                              setSelected({ row: r, column: c, spot: null });
+                              setSelected({ row: r, column: c, bay: null });
                             }
                           }}
-                          onClick={() => setSelected({ row: r, column: c, spot: null })}
+                          onClick={() => setSelected({ row: r, column: c, bay: null })}
                           className={cn(
                             cn("relative rounded-md border bg-white transition-colors", CELL_HEIGHT_CLASS),
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd] focus-visible:ring-offset-2",
@@ -229,24 +319,24 @@ export function WarehouseFloorPlan() {
                             isSelected && crosshairOn && "border-[#1e3a8a] shadow-[0px_1px_3px_0px_rgba(30,58,138,0.15)]",
                           )}
                         >
-                          {/* 9 spot slices */}
+                          {/* 10 bay slices */}
                           <div
                             className={cn(
-                              "absolute inset-1 grid grid-rows-9 gap-px overflow-hidden rounded-[6px]",
+                              "absolute inset-1 grid grid-rows-10 gap-px overflow-hidden rounded-[6px]",
                               isSelected ? "bg-[#93c5fd]" : "bg-[#e2e8f0]",
                             )}
                           >
-                            {SPOTS.map((spotValue) => {
-                              const active = isSelected && spot === spotValue;
+                            {BAYS.map((bayValue) => {
+                              const active = isSelected && bay === bayValue;
                         return (
                                 <button
-                                  key={`${r}-${c}-spot-${spotValue}`}
+                                  key={`${r}-${c}-bay-${bayValue}`}
                                   type="button"
-                                  aria-label={`${r}-${c}-${spotValue}`}
+                                  aria-label={`${r}-${c}-${bayValue}`}
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setSelected({ row: r, column: c, spot: spotValue });
+                                    setSelected({ row: r, column: c, bay: bayValue });
                                   }}
                                   className={cn(
                                     cn(
@@ -258,7 +348,7 @@ export function WarehouseFloorPlan() {
                                     active && "bg-[#1e3a8a] text-white",
                                   )}
                                 >
-                                  <span className="pointer-events-none select-none">{spotValue}</span>
+                                  <span className="pointer-events-none select-none">{bayValue}</span>
                                 </button>
                               );
                             })}
@@ -285,7 +375,7 @@ export function WarehouseFloorPlan() {
               </div>
 
               <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-                L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Aisles on WEST (top) • Rows on SOUTH (left)
+                L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Bays 1–10 • Aisles on WEST (top) • Rows on SOUTH (left)
               </div>
             </div>
           </div>
