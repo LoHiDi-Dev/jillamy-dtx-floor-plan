@@ -89,49 +89,6 @@ export function WarehouseFloorPlan() {
                   </div>
                 ) : null}
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium">Spot (optional)</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelected((prev) => (prev ? { ...prev, spot: null } : prev))}
-                    disabled={!selected?.spot}
-                  >
-                    No spot
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-5 gap-2">
-                  {SPOTS.map((spot) => {
-                    const active = selected?.spot === spot;
-                    return (
-                      <button
-                        key={`panel-spot-${spot}`}
-                        type="button"
-                        onClick={() => setSelected((prev) => (prev ? { ...prev, spot } : prev))}
-                        className={cn(
-                          "h-9 rounded-md border text-sm font-semibold tabular-nums transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                          active
-                            ? "border-[#1e3a8a] bg-[#1e3a8a] text-white"
-                            : "border-[#e2e8f0] bg-white hover:bg-[#f8fafc]",
-                        )}
-                      >
-                        {spot}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="text-xs text-[#45556c]">
-                <div>
-                  <span className="font-semibold">Status:</span>{" "}
-                  <span className="font-semibold text-green-600">Active</span>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </>
