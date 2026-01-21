@@ -174,10 +174,27 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
       setMapSize({ w: el.offsetWidth, h: el.offsetHeight });
     };
 
+    // Run a couple times to catch async layout (fonts/images).
     update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
+    const raf1 = requestAnimationFrame(update);
+    const raf2 = requestAnimationFrame(update);
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+        ro.disconnect();
+      };
+    }
+
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   const rotatedBox = React.useMemo(() => {
@@ -197,6 +214,11 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     if (rotationDeg === 270) return `translateX(${h}px) rotate(270deg)`;
     return undefined;
   }, [mapSize.w, mapSize.h, rotationDeg]);
+
+  const fallbackRotationTransform = React.useMemo(() => {
+    if (!rotationDeg) return undefined;
+    return `rotate(${rotationDeg}deg)`;
+  }, [rotationDeg]);
 
   return (
     <div ref={containerRef} className="flex w-full flex-col gap-4 pb-28">
@@ -289,8 +311,8 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                   <div
                     ref={mapRef}
                     style={{
-                      transform: rotationTransform,
-                      transformOrigin: "top left",
+                      transform: rotationTransform ?? fallbackRotationTransform,
+                      transformOrigin: rotationTransform ? "top left" : "center center",
                       transition: "transform 180ms ease",
                     }}
                   >
