@@ -167,8 +167,13 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     return `rotate(${rotationDeg}deg)`;
   }, [rotationDeg]);
 
+  const rotationStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+    if (!rotationDeg) return undefined;
+    return { transform: `rotate(${rotationDeg}deg)`, transformOrigin: "center center" };
+  }, [rotationDeg]);
+
   return (
-    <div ref={containerRef} className="flex w-full flex-col gap-4 pb-28">
+    <div ref={containerRef} className="flex w-full flex-col gap-4 pb-6">
       {hasSelection ? (
         <div className={CONTENT_WIDTH_CLASS}>
           {/* Sticky clear action while scrolling */}
@@ -246,11 +251,30 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 hasSelection ? "max-h-[calc(100vh-420px)]" : "max-h-[calc(100vh-320px)]",
               )}
             >
+              {/* Sticky context strip (keeps row/aisle/spot context visible even when rotated) */}
+              {selected ? (
+                <div className="sticky top-0 z-50 mb-2 flex justify-center">
+                  <div className="inline-flex items-center gap-3 rounded-full border border-[#e2e8f0] bg-white/95 px-4 py-2 text-xs font-semibold text-[#0f172b] shadow-sm backdrop-blur">
+                    <span>
+                      Row: <span className="font-mono">{selected.row}</span>
+                    </span>
+                    <span className="text-[#94a3b8]">•</span>
+                    <span>
+                      Aisle: <span className="font-mono">{selected.column}</span>
+                    </span>
+                    <span className="text-[#94a3b8]">•</span>
+                    <span>
+                      Spot: <span className="font-mono">{selected.spot ?? "—"}</span>
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mx-auto w-fit max-w-full">
                 <div
                   className="origin-center"
                   style={{
-                    transform: mapTransform,
+                    ...rotationStyle,
                     transformOrigin: "center center",
                     transition: "transform 180ms ease",
                   }}
@@ -403,25 +427,28 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 </div>
               </div>
             </div>
+            {/* Sticky bottom bar: always visible while scrolling the page, and rotates with the map */}
+            <div className="sticky bottom-0 z-40 mt-4">
+              <div className="mx-auto w-full max-w-[1200px]">
+                <div
+                  className="rounded-[16px] border border-[#e2e8f0] bg-white/90 p-3 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.12),0px_4px_6px_-4px_rgba(0,0,0,0.12)] backdrop-blur"
+                  style={rotationStyle}
+                >
+                  <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
+                    The side EAST warehouse entrance
+                  </div>
+
+                  <div className="mt-3 rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
+                    L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 • Aisles on WEST (top) • Rows on SOUTH (left)
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Sticky footer pinned to viewport bottom */}
-      <div className="fixed inset-x-0 bottom-0 z-50">
-        <div className="mx-auto w-full max-w-[1200px] px-4 pb-4 sm:px-6">
-          <div className="rounded-[16px] border border-[#e2e8f0] bg-white/90 p-3 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.12),0px_4px_6px_-4px_rgba(0,0,0,0.12)] backdrop-blur">
-            <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
-              The side EAST warehouse entrance
-            </div>
-
-            <div className="mt-3 rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-              L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 • Aisles on WEST (top) • Rows on SOUTH (left)
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
