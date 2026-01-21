@@ -127,7 +127,7 @@ export function WarehouseFloorPlan() {
         <CardContent className="p-3 sm:p-4">
           <div
             className={cn(
-              "w-full overflow-auto overscroll-contain",
+              "w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]",
               hasSelection ? "max-h-[calc(100vh-360px)]" : "max-h-[calc(100vh-260px)]",
             )}
           >
@@ -151,7 +151,7 @@ export function WarehouseFloorPlan() {
                   <div
                     key={`col-${c}`}
                     className={cn(
-                      "flex h-9 items-center justify-center rounded-md border text-xs font-medium transition-colors sm:h-10 sm:text-sm",
+                      "sticky top-0 z-30 flex h-9 items-center justify-center rounded-md border bg-white/95 text-xs font-medium backdrop-blur transition-colors sm:h-10 sm:text-sm",
                       hasSelection && highlightedCol === c
                         ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
                         : "border-[#e2e8f0] bg-[#f8fafc] text-[#45556c]",
@@ -165,7 +165,7 @@ export function WarehouseFloorPlan() {
                 {ROWS.map((r) => (
                   <React.Fragment key={`row-${r}`}>
                     {r === "I" ? (
-                      <div className="row-span-9 flex items-center justify-center">
+                      <div className="sticky left-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
                         <div className="select-none text-xs font-semibold text-[#880e4f] sm:text-sm [writing-mode:vertical-rl] rotate-180">
                           This side SOUTH
                         </div>
@@ -173,7 +173,11 @@ export function WarehouseFloorPlan() {
                     ) : null}
                     <div
                       className={cn(
-                        cn("flex items-center justify-center rounded-md border text-sm font-semibold transition-colors", CELL_HEIGHT_CLASS),
+                        cn(
+                          "sticky z-20 flex items-center justify-center rounded-md border text-sm font-semibold transition-colors",
+                          CELL_HEIGHT_CLASS,
+                        ),
+                        "left-[24px] sm:left-[32px] bg-white/95 backdrop-blur",
                         hasSelection && highlightedRow === r
                           ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
                           : "border-[#e2e8f0] bg-[#f8fafc] text-[#0f172b]",
@@ -262,7 +266,7 @@ export function WarehouseFloorPlan() {
                       })}
 
                     {r === "I" ? (
-                      <div className="row-span-9 flex items-center justify-center">
+                      <div className="sticky right-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
                         <div className="select-none text-xs font-semibold text-[#0f172b] sm:text-sm [writing-mode:vertical-rl]">
                           This side North
                         </div>
