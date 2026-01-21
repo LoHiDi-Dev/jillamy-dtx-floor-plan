@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import type { RotationDeg } from "../types";
+import { ChevronDown } from "lucide-react";
 
 const ROTATION_LABEL: Record<RotationDeg, string> = {
   0: "Standard",
@@ -47,7 +48,8 @@ export function JimHeader({
                     variant="secondary"
                     className="mt-1 h-8 rounded-[10px] bg-white/10 px-3 text-white hover:bg-white/15"
                   >
-                    {ROTATION_LABEL[rotationDeg]}
+                    <span className="mr-2">{ROTATION_LABEL[rotationDeg]}</span>
+                    <ChevronDown className="size-4 opacity-80" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[140px]">
