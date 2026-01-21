@@ -38,11 +38,14 @@ export function WarehouseFloorPlan() {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
 
+  // Keep selection view + grid the same width to avoid “stretching” when a spot is selected.
+  const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
+
   // Readability: each cell contains 9 spot “slices” (1–9). Keep enough height + font size
   // so the numbers remain readable across common desktop resolutions.
   const CELL_HEIGHT_CLASS = "h-[clamp(96px,12vh,160px)]";
   // Don’t stretch the plan; keep a natural width and center it.
-  const GRID_WIDTH_CLASS = "mx-auto w-fit max-w-full";
+  const GRID_WIDTH_CLASS = "w-full justify-center";
   const SPOT_TEXT_CLASS = "text-[clamp(10px,0.9vw,14px)]";
 
   const selectedCellCode = React.useMemo(() => {
@@ -58,7 +61,7 @@ export function WarehouseFloorPlan() {
   return (
     <div className="flex w-full flex-col gap-4">
       {hasSelection ? (
-        <>
+        <div className={CONTENT_WIDTH_CLASS}>
           {/* Sticky clear action while scrolling */}
           <div className="sticky top-3 z-30 flex justify-end">
             <Button
@@ -93,10 +96,15 @@ export function WarehouseFloorPlan() {
               </div>
             </CardContent>
           </Card>
-        </>
+        </div>
       ) : null}
 
-      <Card className="overflow-hidden rounded-[16px] border-[#e2e8f0] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)]">
+      <Card
+        className={cn(
+          "overflow-hidden rounded-[16px] border-[#e2e8f0] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)]",
+          CONTENT_WIDTH_CLASS,
+        )}
+      >
         <CardHeader className="border-b border-[#e2e8f0]">
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-[#1e3a8a]">Warehouse Floor Plan</CardTitle>
