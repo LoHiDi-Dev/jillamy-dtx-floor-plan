@@ -7,9 +7,9 @@ export default function App() {
   return (
     <DeviceGate>
       {() => (
-        <div className="min-h-screen bg-gradient-to-b from-[#f1f5f9] to-[#e2e8f0]">
+        <div className="min-h-screen overflow-hidden bg-gradient-to-b from-[#f1f5f9] to-[#e2e8f0] flex flex-col">
           {/* Header */}
-          <header className="border-b border-white/10 bg-[#1f2d3d] px-6 py-5 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.20),0px_4px_6px_-4px_rgba(0,0,0,0.20)]">
+          <header className="shrink-0 border-b border-white/10 bg-[#1f2d3d] px-6 py-4 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.20),0px_4px_6px_-4px_rgba(0,0,0,0.20)]">
             <div className="mx-auto max-w-7xl">
               <h1 className="text-xl font-semibold text-white">Jillamy® I DTX Warehouse SMART floor</h1>
               <p className="mt-1 text-sm text-white/80">JIM Web App Integration - DTX Floor Plan</p>
@@ -18,12 +18,12 @@ export default function App() {
           </header>
 
           {/* Main Content */}
-          <main className="px-4 py-6 sm:px-6">
+          <main className="flex-1 overflow-auto px-4 py-4 sm:px-6">
             <WarehouseFloorPlan />
           </main>
 
           {/* Footer */}
-          <footer className="mt-10 border-t border-[#e2e8f0] bg-white/70 px-6 py-5 text-slate-600">
+          <footer className="shrink-0 border-t border-[#e2e8f0] bg-white/70 px-6 py-3 text-slate-600">
             <div className="mx-auto max-w-7xl text-center text-xs">
               <p>Jillamy I DTX Warehouse SMART Floor • Location System • JIM Web App • Created: {new Date().toLocaleDateString()}</p>
               <p className="mt-1 text-slate-500">Warehouse Floor • L-Shaped Layout • Format: ROW-AISLE-SPOT</p>

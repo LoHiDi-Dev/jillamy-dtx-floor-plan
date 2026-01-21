@@ -155,6 +155,24 @@ export function WarehouseFloorPlan() {
     setSearchError(null);
   };
 
+  // Click-away: if a spot is selected and the user clicks anywhere else on the page,
+  // clear the selection. Spot clicks are ignored so selection still works.
+  React.useEffect(() => {
+    if (!selectedLocation) return;
+
+    const captureOptions = { capture: true } as const;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('[data-spot-button="true"]')) return;
+      clearSelection();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, captureOptions);
+    return () => document.removeEventListener("pointerdown", onPointerDown, captureOptions);
+  }, [selectedLocation]);
+
   const handleSearchGo = () => {
     const parsed = parseSearchInput(searchValue);
     if (!parsed.ok) {
@@ -201,7 +219,7 @@ export function WarehouseFloorPlan() {
   return (
     <div className="mx-auto w-full max-w-7xl">
         {/* Header */}
-        <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 mb-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+        <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-4 mb-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-[#1e3a8a] mb-2">Warehouse Plan • Lola Blankets</h1>
@@ -225,11 +243,11 @@ export function WarehouseFloorPlan() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left Column - Search + Grid */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Search Section */}
-            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
               <h2 className="text-lg font-semibold text-[#0f172b] mb-4 flex items-center gap-2">
                 <Search className="w-5 h-5 text-[#1e3a8a]" />
                 Find Location
@@ -246,7 +264,7 @@ export function WarehouseFloorPlan() {
                     }}
                     onKeyDown={(e) => e.key === "Enter" && canSearch && handleSearchGo()}
                     placeholder="Find a location (e.g., I-2-7, I-2, I27)"
-                    className={`w-full rounded-[12px] bg-white px-4 py-2.5 border outline-none ring-offset-2 transition-all ${
+                    className={`w-full rounded-[12px] bg-white px-4 py-2 border outline-none ring-offset-2 transition-all ${
                       searchError 
                         ? 'border-red-300 ring-2 ring-red-200 bg-red-50' 
                         : 'border-[#e2e8f0] focus:ring-2 focus:ring-[#93c5fd]'
@@ -282,10 +300,10 @@ export function WarehouseFloorPlan() {
 
             {/* Warehouse Grid */}
             <div
-              className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 overflow-x-auto shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]"
+              className="rounded-[16px] border border-[#e2e8f0] bg-white p-4 overflow-x-auto shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]"
               ref={scrollRootRef}
             >
-              <div className="relative min-w-[700px]">
+              <div className="relative min-w-[640px]">
                 {/* WEST label (top) */}
                 <div className="text-center mb-3">
                   <span className="text-sm font-semibold text-[#1e3a8a] bg-[#eff6ff] px-4 py-1 rounded-full border border-[#bfdbfe]">
@@ -340,7 +358,7 @@ export function WarehouseFloorPlan() {
                                   className="border border-gray-300 bg-gray-200 p-0 relative"
                                   aria-disabled="true"
                                 >
-                                  <div className="h-16 flex items-center justify-center px-2">
+                                  <div className="h-14 xl:h-16 flex items-center justify-center px-2">
                                     <span className="text-[11px] text-gray-500 italic">No storage</span>
                                   </div>
                                 </td>
@@ -353,8 +371,8 @@ export function WarehouseFloorPlan() {
                                 className="border border-gray-300 p-0 bg-[#f8fafc]"
                               >
                                 {/* 9 spots grid */}
-                                <div className="grid grid-cols-3 gap-0.5 p-1 h-16 md:h-36 lg:h-16">
-                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((spot) => {
+                                <div className="grid grid-cols-3 grid-rows-3 gap-0.5 p-1 h-14 xl:h-16">
+                                  {[1, 4, 7, 2, 5, 8, 3, 6, 9].map((spot) => {
                                     const selected = isSelected(row, aisle, spot);
                                     const code = `${row}-${aisle}-${spot}`;
                                     
@@ -365,12 +383,16 @@ export function WarehouseFloorPlan() {
                                         ref={(el) => {
                                           spotRefs.current[code] = el;
                                         }}
-                                        className={`relative rounded transition-all ${
+                                        data-spot-button="true"
+                                        className={`relative flex h-full w-full items-center justify-center rounded-md border text-[11px] font-semibold leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-[#93c5fd] focus:ring-offset-1 ${
                                           selected
-                                            ? "bg-blue-50 ring-[3px] ring-blue-700 shadow-sm"
-                                            : "bg-white border border-gray-300"
+                                            ? "border-blue-700 bg-blue-50 text-blue-800 ring-[3px] ring-blue-700"
+                                            : "border-gray-300 bg-white text-slate-600"
                                         }`}
+                                        aria-label={`Select ${code}`}
                                       >
+                                        <span className="pointer-events-none select-none">{spot}</span>
+
                                         {/* Marker */}
                                         {selected ? (
                                           <div className="absolute inset-0 pointer-events-none">
@@ -407,41 +429,11 @@ export function WarehouseFloorPlan() {
                 </div>
               </div>
             </div>
-
-            {/* Legend */}
-            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
-              <h3 className="text-sm font-semibold text-[#0f172b] mb-3">Quick Guide</h3>
-              <div className="space-y-2 text-sm text-slate-700">
-                <p><span className="font-semibold">Format:</span> ROW-AISLE-SPOT (e.g., I-2-7)</p>
-                <p className="text-xs text-slate-600">
-                  <span className="font-semibold">Search:</span> I-2-7, partial I-2, or compact I27
-                </p>
-                <p><span className="font-semibold">Aisles:</span> Shown along WEST edge (top)</p>
-                <p><span className="font-semibold">Rows:</span> Shown along SOUTH edge (left)</p>
-                <p className="text-xs text-slate-600">
-                  <span className="font-semibold">No storage rules:</span> Row I (1–9) • Rows A–D (1–6) • Rows E–G (1–5)
-                </p>
-                <div className="flex items-center gap-4 pt-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded"></div>
-                    <span className="text-xs">Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-50 ring-[3px] ring-blue-700 rounded"></div>
-                    <span className="text-xs">Selected</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
-                    <span className="text-xs">No Storage</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Selected Location Panel */}
           <div className="lg:col-span-1">
-            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 sticky top-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-4 sticky top-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
               <h2 className="text-lg font-semibold text-[#0f172b] mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-[#1e3a8a]" />
                 Selected Location
@@ -451,7 +443,7 @@ export function WarehouseFloorPlan() {
                 <div className="space-y-4">
                   {/* Location Code */}
                   <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[14px] p-4 text-center">
-                    <div className="text-4xl font-bold text-[#1e3a8a] font-mono mb-2">
+                    <div className="text-3xl font-bold text-[#1e3a8a] font-mono mb-2">
                       {selectedLocation.code}
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-blue-800">
