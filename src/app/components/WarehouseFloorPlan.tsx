@@ -167,10 +167,18 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     return `rotate(${rotationDeg}deg)`;
   }, [rotationDeg]);
 
-  const rotationStyle = React.useMemo<React.CSSProperties | undefined>(() => {
-    if (!rotationDeg) return undefined;
-    return { transform: `rotate(${rotationDeg}deg)`, transformOrigin: "center center" };
+  const rotationStyle = React.useMemo<React.CSSProperties>(() => {
+    const counter = `${-rotationDeg}deg`;
+    return {
+      transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
+      transformOrigin: "center center",
+      // Used to keep text upright while the map rotates.
+      ["--counter-rot" as any]: counter,
+    };
   }, [rotationDeg]);
+
+  const UPRIGHT_LABEL_CLASS =
+    "inline-block [transform:rotate(var(--counter-rot))] [transform-origin:center]";
 
   return (
     <div ref={containerRef} className="flex w-full flex-col gap-4 pb-6">
@@ -289,7 +297,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
               <div />
               <div />
               <div className="col-span-9 py-1 text-center text-xs font-semibold text-[#1e3a8a] sm:text-sm">
-                This side WEST
+                <span className={UPRIGHT_LABEL_CLASS}>This side WEST</span>
               </div>
               <div />
 
@@ -306,7 +314,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                         : "border-[#e2e8f0] bg-[#f8fafc] text-[#45556c]",
                     )}
                   >
-                    {c}
+                    <span className={UPRIGHT_LABEL_CLASS}>{c}</span>
         </div>
                 ))}
               <div className="h-10" />
@@ -315,8 +323,8 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                     <React.Fragment key={`row-${r}`}>
                     {r === "I" ? (
                       <div className="sticky left-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
-                        <div className="select-none text-xs font-semibold text-[#880e4f] sm:text-sm [writing-mode:vertical-rl] rotate-180">
-                          This side SOUTH
+                        <div className="select-none px-1 text-xs font-semibold text-[#880e4f] sm:text-sm">
+                          <span className={UPRIGHT_LABEL_CLASS}>This side SOUTH</span>
                         </div>
                       </div>
                     ) : null}
@@ -333,7 +341,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                           : "border-[#e2e8f0] bg-[#f8fafc] text-[#0f172b]",
                       )}
                     >
-                      {r}
+                      <span className={UPRIGHT_LABEL_CLASS}>{r}</span>
       </div>
 
                     {COLS.map((c) => {
@@ -406,7 +414,9 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                                     active && "bg-[#1e3a8a] text-white",
                                   )}
                                 >
-                                  <span className="pointer-events-none select-none">{spotValue}</span>
+                                  <span className={cn("pointer-events-none select-none", UPRIGHT_LABEL_CLASS)}>
+                                    {spotValue}
+                                  </span>
                                 </button>
                               );
                             })}
@@ -417,29 +427,26 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
 
                     {r === "I" ? (
                       <div className="sticky right-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
-                        <div className="select-none text-xs font-semibold text-[#0f172b] sm:text-sm [writing-mode:vertical-rl]">
-                          This side North
+                        <div className="select-none px-1 text-xs font-semibold text-[#0f172b] sm:text-sm">
+                          <span className={UPRIGHT_LABEL_CLASS}>This side North</span>
                         </div>
                       </div>
                     ) : null}
                     </React.Fragment>
                   ))}
                 </div>
-              </div>
-            </div>
-            {/* Sticky bottom bar: always visible while scrolling the page, and rotates with the map */}
-            <div className="sticky bottom-0 z-40 mt-4">
-              <div className="mx-auto w-full max-w-[1200px]">
-                <div
-                  className="rounded-[16px] border border-[#e2e8f0] bg-white/90 p-3 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.12),0px_4px_6px_-4px_rgba(0,0,0,0.12)] backdrop-blur"
-                  style={rotationStyle}
-                >
+
+                {/* Entrance edge + note are part of the rotated map geometry; text stays upright */}
+                <div className="mt-6 space-y-3">
                   <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
-                    The side EAST warehouse entrance
+                    <span className={UPRIGHT_LABEL_CLASS}>The side EAST warehouse entrance</span>
                   </div>
 
-                  <div className="mt-3 rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-                    L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 • Aisles on WEST (top) • Rows on SOUTH (left)
+                  <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
+                    <span className={UPRIGHT_LABEL_CLASS}>
+                      L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 •
+                      Aisles on WEST (top) • Rows on SOUTH (left)
+                    </span>
                   </div>
                 </div>
               </div>
