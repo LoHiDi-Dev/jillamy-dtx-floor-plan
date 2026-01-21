@@ -38,10 +38,11 @@ export function WarehouseFloorPlan() {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
 
-  // Keep the floor plan usable on shorter desktop viewports (e.g. 1366×768)
-  // by allowing the cell height to shrink below the previous hard min (64px).
-  // Spots are rendered as 10 slices inside each cell, so keep enough height for readability.
-  const CELL_HEIGHT_CLASS = "h-[clamp(64px,7vh,120px)]";
+  // Readability: each cell contains 10 spot “slices” (1–10). Keep enough height + font size
+  // so the numbers remain readable across common desktop resolutions.
+  const CELL_HEIGHT_CLASS = "h-[clamp(120px,14vh,200px)]";
+  const GRID_MIN_WIDTH_CLASS = "min-w-[1180px]";
+  const SPOT_TEXT_CLASS = "text-[clamp(10px,0.9vw,14px)]";
 
   const selectedCellCode = React.useMemo(() => {
     if (!selected) return null;
@@ -121,7 +122,12 @@ export function WarehouseFloorPlan() {
               hasSelection ? "max-h-[calc(100vh-360px)]" : "max-h-[calc(100vh-260px)]",
             )}
           >
-            <div className="grid grid-cols-[24px_56px_repeat(10,minmax(0,1fr))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(10,minmax(0,1fr))_32px] sm:gap-2">
+            <div
+              className={cn(
+                "grid grid-cols-[24px_56px_repeat(10,minmax(0,1fr))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(10,minmax(0,1fr))_32px] sm:gap-2",
+                GRID_MIN_WIDTH_CLASS,
+              )}
+            >
               {/* Orientation label */}
               <div />
               <div />
@@ -228,7 +234,10 @@ export function WarehouseFloorPlan() {
                                     setSelected({ row: r, column: c, spot: spotValue });
                                   }}
                                   className={cn(
-                                    "flex w-full items-center justify-start px-1 text-[clamp(7px,0.75vw,10px)] leading-none tabular-nums",
+                                    cn(
+                                      "flex w-full items-center justify-start px-2 leading-none tabular-nums",
+                                      SPOT_TEXT_CLASS,
+                                    ),
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd]",
                                     isSelected ? "bg-white text-[#1e3a8a]" : "bg-white text-[#62748e]",
                                     active && "bg-[#1e3a8a] text-white",
