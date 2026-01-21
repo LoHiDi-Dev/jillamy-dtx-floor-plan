@@ -8,29 +8,13 @@ export function JimHeader() {
     <header>
       {/* DTX header bar (like legacy screenshot) */}
       <div className="bg-[#1e293b] text-white shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)]">
-        <div className="mx-auto w-full max-w-[1152px] px-6 py-6">
+        <div className="mx-auto w-full max-w-[1152px] px-4 py-4 sm:px-6 sm:py-5">
           <div className="text-[28px] font-semibold leading-[34px]">DTX Warehouse Location System</div>
           <div className="mt-1 text-[14px] leading-[20px] text-white/80">
             JIM Web App Integration - Warehouse Floor Plan
           </div>
           <div className="mt-1 text-[12px] leading-[16px] text-white/60">2D Top-Down Layout View</div>
         </div>
-      </div>
-
-      {/* JIM brand header */}
-      <div className="border-b border-[#e2e8f0] bg-white">
-      <div className="mx-auto flex h-[89px] w-full max-w-[1152px] items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-        
-          <div className="leading-none">
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right leading-none">
-          </div>
-        </div>
-      </div>
       </div>
     </header>
   );
