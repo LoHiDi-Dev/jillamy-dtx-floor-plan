@@ -126,21 +126,6 @@ export function WarehouseFloorPlan() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="rounded-md border bg-background p-2">
-                  <div className="text-xs text-muted-foreground">Row</div>
-                  <div className="font-semibold">{selected!.row}</div>
-                </div>
-                <div className="rounded-md border bg-background p-2">
-                  <div className="text-xs text-muted-foreground">Aisle</div>
-                  <div className="font-semibold">{selected!.column}</div>
-                </div>
-                <div className="rounded-md border bg-background p-2">
-                  <div className="text-xs text-muted-foreground">Spot</div>
-                  <div className="font-semibold">{selected!.spot ?? "—"}</div>
-                </div>
-              </div>
-
               <div className="text-xs text-[#45556c]">
                 <div>
                   <span className="font-semibold">Status:</span>{" "}
@@ -154,7 +139,19 @@ export function WarehouseFloorPlan() {
 
       <Card className="overflow-hidden rounded-[16px] border-[#e2e8f0] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)]">
         <CardHeader className="border-b border-[#e2e8f0]">
-          <CardTitle className="text-[#1e3a8a]">Warehouse Floor Plan</CardTitle>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="text-[#1e3a8a]">Warehouse Floor Plan</CardTitle>
+            <div
+              className={cn(
+                "shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                hasSelection
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : "border-slate-200 bg-slate-50 text-slate-600",
+              )}
+            >
+              Status: {hasSelection ? "Active" : "Not Active"}
+            </div>
+          </div>
           <CardDescription className="text-[#45556c]">
             Rows: I, A–H • Columns: 1–10 • Spots: 1–10
           </CardDescription>
