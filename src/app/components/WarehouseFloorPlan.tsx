@@ -205,19 +205,10 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     return { width: w, height: h };
   }, [mapSize.w, mapSize.h, rotationDeg]);
 
-  const rotationTransform = React.useMemo(() => {
-    const w = mapSize.w;
-    const h = mapSize.h;
-    if (!w || !h || rotationDeg === 0) return undefined;
-    if (rotationDeg === 90) return `translateY(${w}px) rotate(90deg)`;
-    if (rotationDeg === 180) return `translate(${w}px, ${h}px) rotate(180deg)`;
-    if (rotationDeg === 270) return `translateX(${h}px) rotate(270deg)`;
-    return undefined;
-  }, [mapSize.w, mapSize.h, rotationDeg]);
-
-  const fallbackRotationTransform = React.useMemo(() => {
+  const mapTransform = React.useMemo(() => {
     if (!rotationDeg) return undefined;
-    return `rotate(${rotationDeg}deg)`;
+    // Center-based rotation: always visibly rotates without needing translate math.
+    return `translate(-50%, -50%) rotate(${rotationDeg}deg)`;
   }, [rotationDeg]);
 
   return (
@@ -310,9 +301,10 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 >
                   <div
                     ref={mapRef}
+                    className={rotationDeg ? "absolute left-1/2 top-1/2" : undefined}
                     style={{
-                      transform: rotationTransform ?? fallbackRotationTransform,
-                      transformOrigin: rotationTransform ? "top left" : "center center",
+                      transform: mapTransform,
+                      transformOrigin: "center center",
                       transition: "transform 180ms ease",
                     }}
                   >
