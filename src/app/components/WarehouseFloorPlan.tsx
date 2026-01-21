@@ -145,8 +145,9 @@ export function WarehouseFloorPlan() {
               </div>
               <div />
 
-              <div className="h-10" />
-              <div className="h-10" />
+              {/* Sticky top-left spacers (keep header row solid when scrolling) */}
+              <div className="sticky left-0 top-0 z-40 h-10 bg-white/95 backdrop-blur" />
+              <div className="sticky left-[24px] top-0 z-40 h-10 bg-white/95 backdrop-blur sm:left-[32px]" />
                 {COLS.map((c) => (
                   <div
                     key={`col-${c}`}
@@ -178,6 +179,7 @@ export function WarehouseFloorPlan() {
                           CELL_HEIGHT_CLASS,
                         ),
                         "left-[24px] sm:left-[32px] bg-white/95 backdrop-blur",
+                        hasSelection && highlightedRow === r && "top-[44px] sm:top-[52px] z-40 shadow-sm",
                         hasSelection && highlightedRow === r
                           ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
                           : "border-[#e2e8f0] bg-[#f8fafc] text-[#0f172b]",
