@@ -4,12 +4,12 @@ import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import type { RotationDeg } from "../types";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 const ROTATION_LABEL: Record<RotationDeg, string> = {
   0: "Standard",
@@ -17,6 +17,32 @@ const ROTATION_LABEL: Record<RotationDeg, string> = {
   180: "180°",
   270: "270°",
 };
+
+function RotationMenuItem({
+  value,
+  label,
+  current,
+  onSelect,
+}: {
+  value: RotationDeg;
+  label: string;
+  current: RotationDeg;
+  onSelect: (deg: RotationDeg) => void;
+}) {
+  return (
+    <DropdownMenuItem
+      onSelect={(e) => {
+        e.preventDefault();
+        onSelect(value);
+      }}
+    >
+      <span className="flex w-full items-center justify-between">
+        <span>{label}</span>
+        {current === value ? <Check className="size-4" /> : <span className="size-4" />}
+      </span>
+    </DropdownMenuItem>
+  );
+}
 
 export function JimHeader({
   rotationDeg,
@@ -53,15 +79,31 @@ export function JimHeader({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[140px]">
-                  <DropdownMenuRadioGroup
-                    value={String(rotationDeg)}
-                    onValueChange={(v) => onRotationChange(Number(v) as RotationDeg)}
-                  >
-                    <DropdownMenuRadioItem value="0">Standard</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="90">90°</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="180">180°</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="270">270°</DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
+                  <RotationMenuItem
+                    value={0}
+                    label="Standard"
+                    current={rotationDeg}
+                    onSelect={onRotationChange}
+                  />
+                  <DropdownMenuSeparator />
+                  <RotationMenuItem
+                    value={90}
+                    label="90°"
+                    current={rotationDeg}
+                    onSelect={onRotationChange}
+                  />
+                  <RotationMenuItem
+                    value={180}
+                    label="180°"
+                    current={rotationDeg}
+                    onSelect={onRotationChange}
+                  />
+                  <RotationMenuItem
+                    value={270}
+                    label="270°"
+                    current={rotationDeg}
+                    onSelect={onRotationChange}
+                  />
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
