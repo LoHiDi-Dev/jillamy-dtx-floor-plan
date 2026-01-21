@@ -115,6 +115,7 @@ function formatLocation(loc: SelectedLocation) {
 export function WarehouseFloorPlan() {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Keep selection view + grid the same width to avoid “stretching” when a bay is selected.
   const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
@@ -143,8 +144,25 @@ export function WarehouseFloorPlan() {
     return { seconds, label: formatMinutesSeconds(seconds) };
   }, [selected]);
 
+  // Clear selection when user clicks outside the floor plan area.
+  React.useEffect(() => {
+    if (!hasSelection) return;
+
+    function onPointerDown(e: PointerEvent) {
+      const root = containerRef.current;
+      const target = e.target as Node | null;
+      if (!root || !target) return;
+      if (!root.contains(target)) {
+        setSelected(null);
+      }
+    }
+
+    window.addEventListener("pointerdown", onPointerDown, { capture: true });
+    return () => window.removeEventListener("pointerdown", onPointerDown, { capture: true } as any);
+  }, [hasSelection]);
+
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div ref={containerRef} className="flex w-full flex-col gap-4">
       {hasSelection ? (
         <div className={CONTENT_WIDTH_CLASS}>
           {/* Sticky clear action while scrolling */}
