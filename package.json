@@ -9,7 +9,7 @@
     "build": "node ./node_modules/vite/bin/vite.js build",
     "dev": "node ./node_modules/vite/bin/vite.js",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "lucide-react": "0.487.0",
