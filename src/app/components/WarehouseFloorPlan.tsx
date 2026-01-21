@@ -117,6 +117,8 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const mapRef = React.useRef<HTMLDivElement | null>(null);
+  const [mapSize, setMapSize] = React.useState<{ w: number; h: number }>({ w: 0, h: 0 });
 
   // Keep selection view + grid the same width to avoid “stretching” when a spot is selected.
   const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
@@ -161,6 +163,40 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     window.addEventListener("pointerdown", onPointerDown, { capture: true });
     return () => window.removeEventListener("pointerdown", onPointerDown, { capture: true } as any);
   }, [hasSelection]);
+
+  // Measure the unrotated map size so rotation can be translated into view.
+  React.useLayoutEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+
+    const update = () => {
+      // Transforms don't affect offsetWidth/offsetHeight, which is what we want.
+      setMapSize({ w: el.offsetWidth, h: el.offsetHeight });
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rotatedBox = React.useMemo(() => {
+    const w = mapSize.w;
+    const h = mapSize.h;
+    if (!w || !h) return { width: undefined as number | undefined, height: undefined as number | undefined };
+    if (rotationDeg === 90 || rotationDeg === 270) return { width: h, height: w };
+    return { width: w, height: h };
+  }, [mapSize.w, mapSize.h, rotationDeg]);
+
+  const rotationTransform = React.useMemo(() => {
+    const w = mapSize.w;
+    const h = mapSize.h;
+    if (!w || !h || rotationDeg === 0) return undefined;
+    if (rotationDeg === 90) return `translateY(${w}px) rotate(90deg)`;
+    if (rotationDeg === 180) return `translate(${w}px, ${h}px) rotate(180deg)`;
+    if (rotationDeg === 270) return `translateX(${h}px) rotate(270deg)`;
+    return undefined;
+  }, [mapSize.w, mapSize.h, rotationDeg]);
 
   return (
     <div ref={containerRef} className="flex w-full flex-col gap-4 pb-28">
@@ -241,20 +277,29 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 hasSelection ? "max-h-[calc(100vh-420px)]" : "max-h-[calc(100vh-320px)]",
               )}
             >
-              <div
-                className="w-fit max-w-full"
-                style={{
-                  transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
-                  transformOrigin: "center center",
-                  transition: "transform 180ms ease",
-                }}
-              >
+              <div className="mx-auto w-fit max-w-full">
                 <div
-                  className={cn(
-                    "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
-                    GRID_WIDTH_CLASS,
-                  )}
+                  className="relative"
+                  style={{
+                    width: rotatedBox.width,
+                    height: rotatedBox.height,
+                    transition: "width 180ms ease, height 180ms ease",
+                  }}
                 >
+                  <div
+                    ref={mapRef}
+                    style={{
+                      transform: rotationTransform,
+                      transformOrigin: "top left",
+                      transition: "transform 180ms ease",
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
+                        GRID_WIDTH_CLASS,
+                      )}
+                    >
               {/* Orientation label */}
               <div />
               <div />
@@ -394,6 +439,8 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                     ) : null}
                     </React.Fragment>
                   ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
