@@ -1,27 +1,22 @@
 import * as React from "react";
+import { Search, X, MapPin, Clock, TriangleAlert } from "lucide-react";
 
-import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
-import { cn } from "./ui/utils";
-import type { RotationDeg } from "../types";
+type RowCode = 'I' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
 
-type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
-
-type SelectedLocation = {
+interface Location {
   row: RowCode;
-  column: number;
+  aisle: number;
   spot: number | null;
-};
+  code: string;
+}
 
-const ROWS: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G"];
-const COLS = Array.from({ length: 9 }, (_, i) => i + 1);
-const SPOTS = Array.from({ length: 9 }, (_, i) => i + 1);
+// Determine if a location is valid based on warehouse geometry
+function isValidLocation(row: RowCode, aisle: number): boolean {
+  if (row === 'I') return aisle >= 1 && aisle <= 9;
+  if (['A', 'B', 'C', 'D'].includes(row)) return aisle >= 1 && aisle <= 6;
+  if (['E', 'F', 'G'].includes(row)) return aisle >= 1 && aisle <= 5;
+  return false;
+}
 
 type Location3D = { row: RowCode; aisle: number; spot: number };
 
@@ -44,36 +39,24 @@ const WALK_TIME_ANCHORS: Array<Location3D & { seconds: number }> = [
   { row: "E", aisle: 5, spot: 5, seconds: 30 },
 ];
 
-function parseLocationCode(code: string): Location3D | null {
-  const parts = code.trim().toUpperCase().split("-");
-  if (parts.length !== 3) return null;
-  const row = parts[0] as RowCode;
-  const aisle = Number(parts[1]);
-  const spot = Number(parts[2]);
-  if (!Object.prototype.hasOwnProperty.call(ROW_INDEX, row)) return null;
-  if (!Number.isFinite(aisle) || !Number.isFinite(spot)) return null;
-  return { row, aisle, spot };
-}
-
 function formatMinutesSeconds(totalSeconds: number) {
   const clamped = Math.max(0, Math.round(totalSeconds));
   const minutes = Math.floor(clamped / 60);
   const seconds = clamped % 60;
-  if (minutes <= 0) return `${seconds} seconds`;
+  const secondLabel = seconds === 1 ? "second" : "seconds";
+  if (minutes <= 0) return `${seconds} ${secondLabel}`;
   const minuteLabel = minutes === 1 ? "minute" : "minutes";
   if (seconds <= 0) return `${minutes} ${minuteLabel}`;
-  return `${minutes} ${minuteLabel} ${seconds} seconds`;
+  return `${minutes} ${minuteLabel} ${seconds} ${secondLabel}`;
 }
 
 function estimateWalkSecondsIDW(loc: Location3D) {
   const ROW_SPAN = 7;
-  const AISLE_SPAN = 8; // aisles 1..9
-  const SPOT_SPAN = 8; // spots 1..9
+  const AISLE_SPAN = 8; // 1..9
+  const SPOT_SPAN = 8; // 1..9
 
   const eps = 1e-6;
   const power = 2;
-
-  const rowIndexP = ROW_INDEX[loc.row];
 
   const anchorSeconds = WALK_TIME_ANCHORS.map((a) => a.seconds);
   const minAnchorSeconds = Math.min(...anchorSeconds);
@@ -83,10 +66,9 @@ function estimateWalkSecondsIDW(loc: Location3D) {
   let weightTotal = 0;
 
   for (const a of WALK_TIME_ANCHORS) {
-    // Exact anchor match -> exact time
     if (a.row === loc.row && a.aisle === loc.aisle && a.spot === loc.spot) return a.seconds;
 
-    const dr = Math.abs(rowIndexP - ROW_INDEX[a.row]) / ROW_SPAN;
+    const dr = Math.abs(ROW_INDEX[loc.row] - ROW_INDEX[a.row]) / ROW_SPAN;
     const da = Math.abs(loc.aisle - a.aisle) / AISLE_SPAN;
     const ds = Math.abs(loc.spot - a.spot) / SPOT_SPAN;
     const distance = Math.sqrt(dr * dr + da * da + ds * ds);
@@ -101,361 +83,441 @@ function estimateWalkSecondsIDW(loc: Location3D) {
   return Math.round(clamped);
 }
 
-function isValidCell(row: RowCode, column: number) {
-  if (row === "I") return column >= 1 && column <= 9;
-  if (row === "A" || row === "B" || row === "C" || row === "D") return column >= 1 && column <= 6;
-  // E–G
-  return column >= 1 && column <= 5;
+function buildCode(row: RowCode, aisle: number, spot: number | null) {
+  return spot ? `${row}-${aisle}-${spot}` : `${row}-${aisle}`;
 }
 
-function formatLocation(loc: SelectedLocation) {
-  if (!loc.spot) return `${loc.row}-${loc.column}`;
-  return `${loc.row}-${loc.column}-${loc.spot}`;
+type ParsedSearch =
+  | { ok: true; row: RowCode; aisle: number; spot: number | null }
+  | { ok: false; message: string };
+
+function parseSearchInput(raw: string): ParsedSearch {
+  const value = raw.trim().toUpperCase();
+  if (!value) return { ok: false, message: "Enter a location (e.g., I-2-7 or I27)" };
+  const allowedRows: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G"];
+  const firstChar = value[0];
+  if (/^[A-Z]$/.test(firstChar) && !allowedRows.includes(firstChar as RowCode)) {
+    return { ok: false, message: "Invalid row (valid rows: I, A–G)." };
+  }
+
+  // Hyphen formats: I-1 or I-1-2
+  const hyphen = value.match(/^([IA-G])-(\d)(?:-(\d))?$/);
+  if (hyphen) {
+    const row = hyphen[1] as RowCode;
+    const aisle = Number(hyphen[2]);
+    const spot = hyphen[3] ? Number(hyphen[3]) : null;
+    if (aisle < 1 || aisle > 9) return { ok: false, message: "Invalid aisle (valid range is 1–9)." };
+    if (spot !== null && (spot < 1 || spot > 9)) return { ok: false, message: "Invalid spot (valid range is 1–9)." };
+    return { ok: true, row, aisle, spot };
+  }
+
+  // Compact formats: I2 (partial) or I21 (full)
+  const compact = value.match(/^([IA-G])(\d)(\d)?$/);
+  if (compact) {
+    const row = compact[1] as RowCode;
+    const aisle = Number(compact[2]);
+    const spot = compact[3] ? Number(compact[3]) : null;
+    if (aisle < 1 || aisle > 9) return { ok: false, message: "Invalid aisle (valid range is 1–9)." };
+    if (spot !== null && (spot < 1 || spot > 9)) return { ok: false, message: "Invalid spot (valid range is 1–9)." };
+    return { ok: true, row, aisle, spot };
+  }
+
+  return {
+    ok: false,
+    message: "Invalid format. Use ROW-AISLE-SPOT (I-2-7), partial (I-2), or compact (I27).",
+  };
 }
 
-export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: RotationDeg }) {
-  const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
-  const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
+export function WarehouseFloorPlan() {
+  const [selectedLocation, setSelectedLocation] = React.useState<Location | null>(null);
+  const [searchValue, setSearchValue] = React.useState("");
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const scrollRootRef = React.useRef<HTMLDivElement | null>(null);
+  const spotRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Keep selection view + grid the same width to avoid “stretching” when a spot is selected.
-  const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
+  const primaryButtonClass =
+    "inline-flex h-12 items-center justify-center gap-2 rounded-[10px] bg-[#1E3A8A] px-4 text-[18px] font-medium leading-7 text-white shadow-sm transition-colors hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#93c5fd] focus:ring-offset-2 active:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#1E3A8A] disabled:active:bg-[#1E3A8A]";
 
-  // Readability: each cell contains 9 spot “slices” (1–9). Keep enough height + font size
-  // so the numbers remain readable across common desktop resolutions.
-  const CELL_HEIGHT_CLASS = "h-[clamp(96px,12vh,160px)]";
-  // Don’t stretch the plan; keep a natural width and center it.
-  const GRID_WIDTH_CLASS = "w-full justify-center";
-  const SPOT_TEXT_CLASS = "text-[clamp(10px,0.9vw,14px)]";
+  const canSearch = searchValue.trim().length > 0;
 
-  const selectedCellCode = React.useMemo(() => {
-    if (!selected) return null;
-    return `${selected.row}-${selected.column}`;
-  }, [selected]);
+  const handleSpotClick = (row: RowCode, aisle: number, spot: number) => {
+    if (isValidLocation(row, aisle)) {
+      const code = buildCode(row, aisle, spot);
+      setSelectedLocation({ row, aisle, spot, code });
+      setSearchValue("");
+      setSearchError(null);
+    }
+  };
 
-  const hasSelection = Boolean(selected);
-  const crosshairOn = Boolean(selected?.spot);
-  const highlightedRow = selected?.row ?? null;
-  const highlightedCol = selected?.column ?? null;
+  const clearSelection = () => {
+    setSelectedLocation(null);
+    setSearchValue("");
+    setSearchError(null);
+  };
 
-  const approxWalkTime = React.useMemo(() => {
-    if (!selected?.spot) return null;
-    const loc3d: Location3D = { row: selected.row, aisle: selected.column, spot: selected.spot };
-    const seconds = estimateWalkSecondsIDW(loc3d);
-    return { seconds, label: formatMinutesSeconds(seconds) };
-  }, [selected]);
-
-  // Clear selection when user clicks outside the floor plan area.
-  React.useEffect(() => {
-    if (!hasSelection) return;
-
-    function onPointerDown(e: PointerEvent) {
-      const root = containerRef.current;
-      const target = e.target as Node | null;
-      if (!root || !target) return;
-      if (!root.contains(target)) {
-        setSelected(null);
-      }
+  const handleSearchGo = () => {
+    const parsed = parseSearchInput(searchValue);
+    if (!parsed.ok) {
+      setSearchError(parsed.message);
+      return;
     }
 
-    window.addEventListener("pointerdown", onPointerDown, { capture: true });
-    return () => window.removeEventListener("pointerdown", onPointerDown, { capture: true } as any);
-  }, [hasSelection]);
+    if (!isValidLocation(parsed.row, parsed.aisle)) {
+      setSearchError(`No storage at ${parsed.row}-${parsed.aisle}.`);
+      return;
+    }
 
-  const mapTransform = React.useMemo(() => {
-    if (!rotationDeg) return undefined;
-    return `rotate(${rotationDeg}deg)`;
-  }, [rotationDeg]);
+    const code = buildCode(parsed.row, parsed.aisle, parsed.spot);
+    setSelectedLocation({ row: parsed.row, aisle: parsed.aisle, spot: parsed.spot, code });
+    setSearchValue("");
+    setSearchError(null);
+  };
 
-  const rotationStyle = React.useMemo<React.CSSProperties>(() => {
-    const counter = `${-rotationDeg}deg`;
-    return {
-      transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
-      transformOrigin: "center center",
-      // Used to keep text upright while the map rotates.
-      ["--counter-rot" as any]: counter,
-    };
-  }, [rotationDeg]);
+  const isSelected = (row: RowCode, aisle: number, spot: number) => {
+    return selectedLocation?.row === row && 
+           selectedLocation?.aisle === aisle && 
+           selectedLocation?.spot === spot;
+  };
 
-  const UPRIGHT_LABEL_CLASS =
-    "inline-block [transform:rotate(var(--counter-rot))] [transform-origin:center]";
+  React.useEffect(() => {
+    if (!selectedLocation) return;
+    const targetSpot = selectedLocation.spot ?? 1;
+    const key = `${selectedLocation.row}-${selectedLocation.aisle}-${targetSpot}`;
+    const el = spotRefs.current[key];
+    if (!el) return;
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+  }, [selectedLocation?.row, selectedLocation?.aisle, selectedLocation?.spot]);
+
+  const approxWalkTimeLabel = React.useMemo(() => {
+    if (!selectedLocation?.spot) return null;
+    const seconds = estimateWalkSecondsIDW({
+      row: selectedLocation.row,
+      aisle: selectedLocation.aisle,
+      spot: selectedLocation.spot,
+    });
+    return formatMinutesSeconds(seconds);
+  }, [selectedLocation]);
 
   return (
-    <div ref={containerRef} className="flex w-full flex-col gap-4 pb-6">
-      {hasSelection ? (
-        <div className={CONTENT_WIDTH_CLASS}>
-          {/* Sticky clear action while scrolling */}
-          <div className="sticky top-3 z-30 flex justify-end">
-            <Button
-              size="sm"
-              onClick={() => setSelected(null)}
-              className="h-8 rounded-[10px] bg-red-500 px-3 text-white shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.18),0px_4px_6px_-4px_rgba(0,0,0,0.18)] hover:bg-red-600"
-            >
-              Clear Selection
-            </Button>
-          </div>
-
-          <Card className="rounded-[16px] border-[#e2e8f0] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)]">
-            <CardHeader className="border-b border-[#e2e8f0]">
-              <div className="min-w-0">
-                <CardTitle className="text-[#1e3a8a]">Selected Location</CardTitle>
-                <CardDescription className="text-[#45556c]">Format: ROW-AISLE-SPOT</CardDescription>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4 p-4">
-              {/* hasSelection guarantees selected is non-null here */}
-              <div className="rounded-[12px] border border-[#93c5fd] bg-[#eff6ff] p-3">
-                <div className="text-sm font-semibold text-[#2563eb]">Location:</div>
-                <div className="mt-1 font-mono text-2xl font-bold text-[#1e3a8a]">
-                  {formatLocation(selected!)}
-                </div>
-                {selectedCellCode ? (
-                  <div className="mt-1 text-xs text-[#45556c]">
-                    Cell: <span className="font-mono">{selectedCellCode}</span>
-                  </div>
-                ) : null}
-                {approxWalkTime ? (
-                  <div className="mt-2 text-sm font-semibold text-[#0f172b]">
-                    Approx Walk Time: <span className="font-semibold">{approxWalkTime.label}</span>
-                  </div>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
-      <Card
-        className={cn(
-          "overflow-hidden rounded-[16px] border-[#e2e8f0] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)]",
-          CONTENT_WIDTH_CLASS,
-        )}
-      >
-        <CardHeader className="border-b border-[#e2e8f0]">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-[#1e3a8a]">Warehouse Floor Plan</CardTitle>
-            <div
-              className={cn(
-                "shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold",
-                hasSelection
-                  ? "border-green-200 bg-green-50 text-green-700"
-                  : "border-slate-200 bg-slate-50 text-slate-600",
-              )}
-            >
-              Status: {hasSelection ? "Active" : "Not Active"}
+    <div className="mx-auto w-full max-w-7xl">
+        {/* Header */}
+        <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 mb-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-[#1e3a8a] mb-2">Warehouse Plan • Lola Blankets</h1>
+              <p className="text-sm text-slate-600">
+                <span className="font-medium">Rows:</span> I, A–G • <span className="font-medium">Aisles:</span> 1–9 • <span className="font-medium">Spots:</span> 1–9
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Status:</span>
+              <span
+                className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                  selectedLocation
+                    ? "border border-green-200 bg-green-50 text-green-700"
+                    : "border border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                {selectedLocation ? "Active" : "Not Active"}
+              </span>
             </div>
           </div>
-          <CardDescription className="text-[#45556c]">
-            Rows: I, A–G • Aisles: 1–9 • Spots: 1–9
-          </CardDescription>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-col gap-4">
-            <div
-              className={cn(
-                "w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]",
-                hasSelection ? "max-h-[calc(100vh-420px)]" : "max-h-[calc(100vh-320px)]",
-              )}
-            >
-              {/* Sticky context strip (keeps row/aisle/spot context visible even when rotated) */}
-              {selected ? (
-                <div className="sticky top-0 z-50 mb-2 flex justify-center">
-                  <div className="inline-flex items-center gap-3 rounded-full border border-[#e2e8f0] bg-white/95 px-4 py-2 text-xs font-semibold text-[#0f172b] shadow-sm backdrop-blur">
-                    <span>
-                      Row: <span className="font-mono">{selected.row}</span>
-                    </span>
-                    <span className="text-[#94a3b8]">•</span>
-                    <span>
-                      Aisle: <span className="font-mono">{selected.column}</span>
-                    </span>
-                    <span className="text-[#94a3b8]">•</span>
-                    <span>
-                      Spot: <span className="font-mono">{selected.spot ?? "—"}</span>
-                    </span>
-                  </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Search + Grid */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Search Section */}
+            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+              <h2 className="text-lg font-semibold text-[#0f172b] mb-4 flex items-center gap-2">
+                <Search className="w-5 h-5 text-[#1e3a8a]" />
+                Find Location
+              </h2>
+              
+              <div className="flex gap-3 mb-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={searchValue}
+                    onChange={(e) => {
+                      setSearchValue(e.target.value.toUpperCase());
+                      setSearchError(null);
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && canSearch && handleSearchGo()}
+                    placeholder="Find a location (e.g., I-2-7, I-2, I27)"
+                    className={`w-full rounded-[12px] bg-white px-4 py-2.5 border outline-none ring-offset-2 transition-all ${
+                      searchError 
+                        ? 'border-red-300 ring-2 ring-red-200 bg-red-50' 
+                        : 'border-[#e2e8f0] focus:ring-2 focus:ring-[#93c5fd]'
+                    }`}
+                  />
+                  {searchError ? (
+                    <p className="text-xs text-red-600 mt-1 ml-1">
+                      {searchError}
+                    </p>
+                  ) : null}
                 </div>
-              ) : null}
-
-              <div className="mx-auto w-fit max-w-full">
-                <div
-                  className="origin-center"
-                  style={{
-                    ...rotationStyle,
-                    transformOrigin: "center center",
-                    transition: "transform 180ms ease",
-                  }}
+                <button
+                  onClick={handleSearchGo}
+                  disabled={!canSearch}
+                  className={primaryButtonClass}
                 >
-                  <div
-                    className={cn(
-                      "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
-                      GRID_WIDTH_CLASS,
-                    )}
+                  Go
+                </button>
+                {searchValue && (
+                  <button
+                    onClick={() => {
+                      setSearchValue("");
+                      setSearchError(null);
+                    }}
+                    className="inline-flex items-center justify-center rounded-[14px] bg-slate-100 px-4 py-3 text-slate-700 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-[#93c5fd] focus:ring-offset-2"
                   >
-              {/* Orientation label */}
-              <div />
-              <div />
-              <div className="col-span-9 py-1 text-center text-xs font-semibold text-[#1e3a8a] sm:text-sm">
-                <span className={UPRIGHT_LABEL_CLASS}>This side WEST</span>
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
-              <div />
 
-              {/* Sticky top-left spacers (keep header row solid when scrolling) */}
-              <div className="sticky left-0 top-0 z-40 h-10 bg-white/95 backdrop-blur" />
-              <div className="sticky left-[24px] top-0 z-40 h-10 bg-white/95 backdrop-blur sm:left-[32px]" />
-                {COLS.map((c) => (
-                  <div
-                    key={`col-${c}`}
-                    className={cn(
-                      "sticky top-0 z-30 flex h-9 items-center justify-center rounded-md border bg-white/95 text-xs font-medium backdrop-blur transition-colors sm:h-10 sm:text-sm",
-                      hasSelection && highlightedCol === c
-                        ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
-                        : "border-[#e2e8f0] bg-[#f8fafc] text-[#45556c]",
-                    )}
-                  >
-                    <span className={UPRIGHT_LABEL_CLASS}>{c}</span>
-        </div>
-                ))}
-              <div className="h-10" />
+            </div>
 
-                  {ROWS.map((r) => (
-                    <React.Fragment key={`row-${r}`}>
-                    {r === "I" ? (
-                      <div className="sticky left-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
-                        <div className="select-none px-1 text-xs font-semibold text-[#880e4f] sm:text-sm">
-                          <span className={UPRIGHT_LABEL_CLASS}>This side SOUTH</span>
-                        </div>
-                      </div>
-                    ) : null}
-                    <div
-                      className={cn(
-                        cn(
-                          "sticky z-20 flex items-center justify-center rounded-md border text-sm font-semibold transition-colors",
-                          CELL_HEIGHT_CLASS,
-                        ),
-                        "left-[24px] sm:left-[32px] bg-white/95 backdrop-blur",
-                        hasSelection && highlightedRow === r && "top-[44px] sm:top-[52px] z-40 shadow-sm",
-                        hasSelection && highlightedRow === r
-                          ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
-                          : "border-[#e2e8f0] bg-[#f8fafc] text-[#0f172b]",
-                      )}
-                    >
-                      <span className={UPRIGHT_LABEL_CLASS}>{r}</span>
-      </div>
-
-                    {COLS.map((c) => {
-                      const valid = isValidCell(r, c);
-                      const isSelected = selected?.row === r && selected?.column === c;
-                      const isHovered = hovered?.row === r && hovered?.column === c;
-                      const spot = isSelected ? selected?.spot : null;
-                      if (!valid) {
-                        return (
-                          <div
-                            key={`${r}-${c}-invalid`}
-                            aria-hidden="true"
-                            className={cn(
-                              cn("relative flex items-center justify-center rounded-md border", CELL_HEIGHT_CLASS),
-                              "border-[#e2e8f0] bg-[#e2e8f0]/60 text-xs text-[#62748e]",
-                            )}
-                          />
-                        );
-                      }
-                  
-                  return (
-                        <div
-                          key={`${r}-${c}`}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`${r}-${c}`}
-                          aria-pressed={isSelected}
-                          onMouseEnter={() => setHovered({ row: r, column: c })}
-                          onMouseLeave={() => setHovered(null)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setSelected({ row: r, column: c, spot: null });
-                            }
-                          }}
-                          onClick={() => setSelected({ row: r, column: c, spot: null })}
-                          className={cn(
-                            cn("relative rounded-md border bg-white transition-colors", CELL_HEIGHT_CLASS),
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd] focus-visible:ring-offset-2",
-                            // Only highlight the actual selected cell (not the entire row/column of cells)
-                            isSelected && crosshairOn && "border-[#1e3a8a] shadow-[0px_1px_3px_0px_rgba(30,58,138,0.15)]",
-                          )}
-                        >
-                          {/* 9 spot slices */}
-                          <div
-                            className={cn(
-                              "absolute inset-1 grid grid-rows-9 gap-px overflow-hidden rounded-[6px]",
-                              isSelected ? "bg-[#93c5fd]" : "bg-[#e2e8f0]",
-                            )}
-                          >
-                            {SPOTS.map((spotValue) => {
-                              const active = isSelected && spot === spotValue;
-                        return (
-                                <button
-                                  key={`${r}-${c}-spot-${spotValue}`}
-                                  type="button"
-                                  aria-label={`${r}-${c}-${spotValue}`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setSelected({ row: r, column: c, spot: spotValue });
-                                  }}
-                                  className={cn(
-                                    cn(
-                                      "flex w-full items-center justify-start px-2 leading-none tabular-nums",
-                                      SPOT_TEXT_CLASS,
-                                    ),
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd]",
-                                    isSelected ? "bg-white text-[#1e3a8a]" : "bg-white text-[#62748e]",
-                                    active && "bg-[#1e3a8a] text-white",
-                                  )}
-                                >
-                                  <span className={cn("pointer-events-none select-none", UPRIGHT_LABEL_CLASS)}>
-                                    {spotValue}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        );
-                      })}
-
-                    {r === "I" ? (
-                      <div className="sticky right-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
-                        <div className="select-none px-1 text-xs font-semibold text-[#0f172b] sm:text-sm">
-                          <span className={UPRIGHT_LABEL_CLASS}>This side North</span>
-                        </div>
-                      </div>
-                    ) : null}
-                    </React.Fragment>
-                  ))}
+            {/* Warehouse Grid */}
+            <div
+              className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 overflow-x-auto shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]"
+              ref={scrollRootRef}
+            >
+              <div className="relative min-w-[700px]">
+                {/* WEST label (top) */}
+                <div className="text-center mb-3">
+                  <span className="text-sm font-semibold text-[#1e3a8a] bg-[#eff6ff] px-4 py-1 rounded-full border border-[#bfdbfe]">
+                    This side WEST
+                  </span>
                 </div>
 
-                {/* Entrance edge + note are part of the rotated map geometry; text stays upright */}
-                <div className="mt-6 space-y-3">
-                  <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
-                    <span className={UPRIGHT_LABEL_CLASS}>The side EAST warehouse entrance</span>
-                  </div>
+                {/* Grid Table */}
+                <div className="overflow-hidden border border-gray-300 rounded-lg">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="bg-[#f8fafc] border border-gray-300 p-2 w-16"></th>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((aisle) => (
+                          <th
+                            key={aisle}
+                            className={`border border-gray-300 p-2 text-center font-bold text-sm transition-all ${
+                              selectedLocation?.aisle === aisle
+                                ? 'bg-[#1e3a8a] text-white'
+                                : 'bg-[#dbeafe] text-[#1e3a8a]'
+                            }`}
+                          >
+                            {aisle}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(['I', 'A', 'B', 'C', 'D', 'E', 'F', 'G'] as RowCode[]).map((row) => (
+                        <tr key={row}>
+                          {/* Row Label */}
+                          <td
+                            className={`border border-gray-300 p-2 text-center font-bold text-sm transition-all ${
+                              selectedLocation?.row === row
+                                ? 'bg-[#1e3a8a] text-white'
+                                : row === 'I'
+                                ? 'bg-orange-200 text-orange-900'
+                                : 'bg-[#f8fafc] text-[#0f172b]'
+                            }`}
+                          >
+                            {row}
+                          </td>
 
-                  <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-                    <span className={UPRIGHT_LABEL_CLASS}>
-                      L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 •
-                      Aisles on WEST (top) • Rows on SOUTH (left)
-                    </span>
+                          {/* Aisle Cells */}
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((aisle) => {
+                            const valid = isValidLocation(row, aisle);
+                            
+                            if (!valid) {
+                              return (
+                                <td
+                                  key={aisle}
+                                  className="border border-gray-300 bg-gray-200 p-0 relative"
+                                  aria-disabled="true"
+                                >
+                                  <div className="h-16 flex items-center justify-center px-2">
+                                    <span className="text-[11px] text-gray-500 italic">No storage</span>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td
+                                key={aisle}
+                                className="border border-gray-300 p-0 bg-[#f8fafc]"
+                              >
+                                {/* 9 spots grid */}
+                                <div className="grid grid-cols-3 gap-0.5 p-1 h-16 md:h-36 lg:h-16">
+                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((spot) => {
+                                    const selected = isSelected(row, aisle, spot);
+                                    const code = `${row}-${aisle}-${spot}`;
+                                    
+                                    return (
+                                      <button
+                                        key={spot}
+                                        onClick={() => handleSpotClick(row, aisle, spot)}
+                                        ref={(el) => {
+                                          spotRefs.current[code] = el;
+                                        }}
+                                        className={`relative rounded transition-all ${
+                                          selected
+                                            ? "bg-blue-50 ring-[3px] ring-blue-700 shadow-sm"
+                                            : "bg-white border border-gray-300"
+                                        }`}
+                                      >
+                                        {/* Marker */}
+                                        {selected ? (
+                                          <div className="absolute inset-0 pointer-events-none">
+                                            <div className="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-blue-700" />
+                                            <MapPin className="w-3 h-3 text-blue-700 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                          </div>
+                                        ) : null}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Side Labels */}
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-sm font-semibold text-red-700 bg-red-50 px-4 py-1 rounded-full">
+                    This side SOUTH
+                  </span>
+                  <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-4 py-1 rounded-full">
+                    This side North
+                  </span>
+                </div>
+
+                {/* Entrance Bar */}
+                <div className="mt-4 bg-[#0f172b] text-white text-center py-3 rounded-[12px] font-semibold text-sm">
+                  The side EAST warehouse entrance
+                </div>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+              <h3 className="text-sm font-semibold text-[#0f172b] mb-3">Quick Guide</h3>
+              <div className="space-y-2 text-sm text-slate-700">
+                <p><span className="font-semibold">Format:</span> ROW-AISLE-SPOT (e.g., I-2-7)</p>
+                <p className="text-xs text-slate-600">
+                  <span className="font-semibold">Search:</span> I-2-7, partial I-2, or compact I27
+                </p>
+                <p><span className="font-semibold">Aisles:</span> Shown along WEST edge (top)</p>
+                <p><span className="font-semibold">Rows:</span> Shown along SOUTH edge (left)</p>
+                <p className="text-xs text-slate-600">
+                  <span className="font-semibold">No storage rules:</span> Row I (1–9) • Rows A–D (1–6) • Rows E–G (1–5)
+                </p>
+                <div className="flex items-center gap-4 pt-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded"></div>
+                    <span className="text-xs">Available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-50 ring-[3px] ring-blue-700 rounded"></div>
+                    <span className="text-xs">Selected</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
+                    <span className="text-xs">No Storage</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          </div>
-        </CardContent>
-      </Card>
 
+          {/* Right Column - Selected Location Panel */}
+          <div className="lg:col-span-1">
+            <div className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 sticky top-6 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10),0px_1px_2px_-1px_rgba(0,0,0,0.10)]">
+              <h2 className="text-lg font-semibold text-[#0f172b] mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[#1e3a8a]" />
+                Selected Location
+              </h2>
+
+              {selectedLocation ? (
+                <div className="space-y-4">
+                  {/* Location Code */}
+                  <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[14px] p-4 text-center">
+                    <div className="text-4xl font-bold text-[#1e3a8a] font-mono mb-2">
+                      {selectedLocation.code}
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-blue-800">
+                      <div className="rounded-md bg-white/60 px-2 py-1">
+                        <span className="font-semibold">Row:</span> <span className="font-mono">{selectedLocation.row}</span>
+                      </div>
+                      <div className="rounded-md bg-white/60 px-2 py-1">
+                        <span className="font-semibold">Aisle:</span>{" "}
+                        <span className="font-mono">{selectedLocation.aisle}</span>
+                      </div>
+                      <div className="rounded-md bg-white/60 px-2 py-1">
+                        <span className="font-semibold">Spot:</span>{" "}
+                        <span className="font-mono">{selectedLocation.spot ?? "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Walk Time */}
+                  <div className="bg-green-50 border border-green-200 rounded-[14px] p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-5 h-5 text-green-700" />
+                      <span className="text-sm font-semibold text-green-700">Approx. Walk Time</span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-900">
+                      {approxWalkTimeLabel ?? "—"}
+                    </div>
+                    <p className="text-xs text-green-700 mt-1">From entrance</p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <button
+                      onClick={clearSelection}
+                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-5 font-medium shadow-sm transition enabled:hover:-translate-y-[1px] enabled:hover:shadow-md active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(23,42,130,0.22)] focus-visible:ring-offset-2 focus-visible:ring-offset-white h-11 text-sm border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 w-full justify-center border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:hover:bg-red-50"
+                      type="button"
+                      data-testid="ic-reset-admin"
+                      aria-disabled="false"
+                    >
+                      <TriangleAlert className="h-4 w-4" aria-hidden="true" />
+                      Clear Selection
+                    </button>
+                  </div>
+
+                  {/* Additional Info */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Location Details</h4>
+                    <div className="space-y-1 text-xs text-slate-600">
+                      <p><span className="font-medium">Row:</span> {selectedLocation.row}</p>
+                      <p><span className="font-medium">Aisle:</span> {selectedLocation.aisle}</p>
+                      <p><span className="font-medium">Spot:</span> {selectedLocation.spot ?? "—"}</p>
+                      <p className="pt-2"><span className="font-medium">Status:</span> <span className="text-green-600 font-semibold">Available</span></p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-600 font-medium mb-1">No location selected</p>
+                  <p className="text-sm text-slate-500">
+                    Click a spot on the grid or use search
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
     </div>
   );
 }

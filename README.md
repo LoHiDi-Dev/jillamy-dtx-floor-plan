@@ -1,11 +1,28 @@
+# Jillamy DTX Warehouse SMART Floor Plan
 
-  # UML Diagram for Warehouse System
+Single-page interactive warehouse floor plan built with **React + TypeScript + Vite + Tailwind**.
 
-  This is a code bundle for UML Diagram for Warehouse System. The original project is available at https://www.figma.com/design/7ybNz9JPsiAs2sjFk5NucH/UML-Diagram-for-Warehouse-System.
+## Requirements
 
-  ## Running the code
+- Node.js (LTS recommended)
 
-  Run `npm i` to install the dependencies.
+## Run locally
 
-  Run `npm run dev` to start the development server.
-  # jillamy-dtx-floor-plan
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Notes
+
+- **Location format**: `ROW-AISLE-SPOT`
+- **Rows**: `I, A–G`
+- **Aisles**: `1–9`
+- **Spots**: `1–9`
