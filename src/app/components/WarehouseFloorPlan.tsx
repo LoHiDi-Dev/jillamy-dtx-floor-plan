@@ -234,26 +234,27 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
         </CardHeader>
 
         <CardContent className="p-3 sm:p-4">
-          <div
-            className={cn(
-              "w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]",
-              hasSelection ? "max-h-[calc(100vh-360px)]" : "max-h-[calc(100vh-260px)]",
-            )}
-          >
-            <div
-              className="w-fit max-w-full"
-              style={{
-                transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
-                transformOrigin: "center center",
-                transition: "transform 180ms ease",
-              }}
-            >
+          <div className="flex flex-col gap-4">
             <div
               className={cn(
-                "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
-                GRID_WIDTH_CLASS,
+                "w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]",
+                hasSelection ? "max-h-[calc(100vh-420px)]" : "max-h-[calc(100vh-320px)]",
               )}
             >
+              <div
+                className="w-fit max-w-full"
+                style={{
+                  transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
+                  transformOrigin: "center center",
+                  transition: "transform 180ms ease",
+                }}
+              >
+                <div
+                  className={cn(
+                    "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
+                    GRID_WIDTH_CLASS,
+                  )}
+                >
               {/* Orientation label */}
               <div />
               <div />
@@ -280,8 +281,8 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 ))}
               <div className="h-10" />
 
-                {ROWS.map((r) => (
-                  <React.Fragment key={`row-${r}`}>
+                  {ROWS.map((r) => (
+                    <React.Fragment key={`row-${r}`}>
                     {r === "I" ? (
                       <div className="sticky left-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
                         <div className="select-none text-xs font-semibold text-[#880e4f] sm:text-sm [writing-mode:vertical-rl] rotate-180">
@@ -391,12 +392,14 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                         </div>
                       </div>
                     ) : null}
-                  </React.Fragment>
-                ))}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* EAST entrance + layout note (below H row) */}
-            <div className="mt-6 space-y-4">
+            {/* Always-visible footer (not inside floor map scroll/rotation) */}
+            <div className="space-y-4">
               <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
                 The side EAST warehouse entrance
               </div>
@@ -404,7 +407,6 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
               <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
                 L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 • Aisles on WEST (top) • Rows on SOUTH (left)
               </div>
-            </div>
             </div>
           </div>
         </CardContent>
