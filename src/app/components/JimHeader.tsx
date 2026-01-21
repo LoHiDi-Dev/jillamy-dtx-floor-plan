@@ -1,15 +1,7 @@
 import * as React from "react";
 
-import { Button } from "./ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
 import type { RotationDeg } from "../types";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 const ROTATION_LABEL: Record<RotationDeg, string> = {
   0: "Standard",
@@ -17,32 +9,6 @@ const ROTATION_LABEL: Record<RotationDeg, string> = {
   180: "180°",
   270: "270°",
 };
-
-function RotationMenuItem({
-  value,
-  label,
-  current,
-  onSelect,
-}: {
-  value: RotationDeg;
-  label: string;
-  current: RotationDeg;
-  onSelect: (deg: RotationDeg) => void;
-}) {
-  return (
-    <DropdownMenuItem
-      onSelect={(e) => {
-        e.preventDefault();
-        onSelect(value);
-      }}
-    >
-      <span className="flex w-full items-center justify-between">
-        <span>{label}</span>
-        {current === value ? <Check className="size-4" /> : <span className="size-4" />}
-      </span>
-    </DropdownMenuItem>
-  );
-}
 
 export function JimHeader({
   rotationDeg,
@@ -67,45 +33,19 @@ export function JimHeader({
 
             <div className="shrink-0 pt-1">
               <div className="text-[12px] font-medium text-white/70">Rotation</div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="mt-1 h-8 rounded-[10px] bg-white/10 px-3 text-white hover:bg-white/15"
-                  >
-                    <span className="mr-2">{ROTATION_LABEL[rotationDeg]}</span>
-                    <ChevronDown className="size-4 opacity-80" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[140px]">
-                  <RotationMenuItem
-                    value={0}
-                    label="Standard"
-                    current={rotationDeg}
-                    onSelect={onRotationChange}
-                  />
-                  <DropdownMenuSeparator />
-                  <RotationMenuItem
-                    value={90}
-                    label="90°"
-                    current={rotationDeg}
-                    onSelect={onRotationChange}
-                  />
-                  <RotationMenuItem
-                    value={180}
-                    label="180°"
-                    current={rotationDeg}
-                    onSelect={onRotationChange}
-                  />
-                  <RotationMenuItem
-                    value={270}
-                    label="270°"
-                    current={rotationDeg}
-                    onSelect={onRotationChange}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="relative mt-1 inline-flex items-center">
+                <select
+                  className="h-8 appearance-none rounded-[10px] bg-white/10 px-3 pr-9 text-sm font-medium text-white outline-none ring-1 ring-white/15 transition hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/40"
+                  value={rotationDeg}
+                  onChange={(e) => onRotationChange(Number(e.target.value) as RotationDeg)}
+                >
+                  <option value={0}>Standard</option>
+                  <option value={90}>90°</option>
+                  <option value={180}>180°</option>
+                  <option value={270}>270°</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 size-4 opacity-80" />
+              </div>
             </div>
           </div>
         </div>
