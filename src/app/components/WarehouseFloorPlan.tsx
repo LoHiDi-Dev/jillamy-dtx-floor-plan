@@ -10,7 +10,7 @@ import {
 } from "./ui/card";
 import { cn } from "./ui/utils";
 
-type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
+type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
 type SelectedLocation = {
   row: RowCode;
@@ -18,14 +18,14 @@ type SelectedLocation = {
   spot: number | null;
 };
 
-const ROWS: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G", "H"];
+const ROWS: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G"];
 const COLS = Array.from({ length: 10 }, (_, i) => i + 1);
 const SPOTS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 function isValidCell(row: RowCode, column: number) {
   if (row === "I") return column >= 1 && column <= 10;
   if (row === "A" || row === "B" || row === "C" || row === "D") return column >= 1 && column <= 6;
-  // E–H
+  // E–G
   return column >= 1 && column <= 5;
 }
 
@@ -112,7 +112,7 @@ export function WarehouseFloorPlan() {
             </div>
           </div>
           <CardDescription className="text-[#45556c]">
-            Rows: I, A–H • Columns: 1–10 • Spots: 1–10
+            Rows: I, A–G • Columns: 1–10 • Spots: 1–10
           </CardDescription>
         </CardHeader>
 
@@ -271,7 +271,7 @@ export function WarehouseFloorPlan() {
               </div>
 
               <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-                L-shaped layout: Row I (Aisles 1–10) • Rows A–H (Aisles 1–6) • Aisles on WEST (top) • Rows on SOUTH (left)
+                L-shaped layout: Row I (Aisles 1–10) • Rows A–G (Aisles 1–6) • Aisles on WEST (top) • Rows on SOUTH (left)
               </div>
             </div>
           </div>
