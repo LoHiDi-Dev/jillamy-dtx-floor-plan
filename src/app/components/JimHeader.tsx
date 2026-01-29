@@ -1,21 +1,22 @@
 import * as React from "react";
 
-import type { RotationDeg } from "../types";
+import type { EntranceView } from "../types";
 import { ChevronDown } from "lucide-react";
 
-const ROTATION_LABEL: Record<RotationDeg, string> = {
-  0: "Standard",
-  90: "90°",
-  180: "180°",
-  270: "270°",
+const ENTRANCE_VIEW_LABEL: Record<EntranceView, string> = {
+  bottom: "Entrance at Bottom",
+  left: "Entrance at Left",
+  top: "Entrance at Top",
 };
 
 export function JimHeader({
-  rotationDeg,
-  onRotationChange,
+  entranceView,
+  onEntranceViewChange,
+  isPhone = false,
 }: {
-  rotationDeg: RotationDeg;
-  onRotationChange: (deg: RotationDeg) => void;
+  entranceView: EntranceView;
+  onEntranceViewChange: (view: EntranceView) => void;
+  isPhone?: boolean;
 }) {
   return (
     <header>
@@ -25,24 +26,27 @@ export function JimHeader({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="text-[28px] font-semibold leading-[34px]">DTX Warehouse Location System</div>
-              <div className="mt-1 text-[14px] leading-[20px] text-white/80">
-                JIM Web App Integration - Warehouse Floor Plan
-              </div>
-              <div className="mt-1 text-[12px] leading-[16px] text-white/60">2D Top-Down Layout View</div>
+              {!isPhone ? (
+                <>
+                  <div className="mt-1 text-[14px] leading-[20px] text-white/80">
+                    JIM Web App Integration - Warehouse Floor Plan
+                  </div>
+                  <div className="mt-1 text-[12px] leading-[16px] text-white/60">2D Top-Down Layout View</div>
+                </>
+              ) : null}
             </div>
 
             <div className="shrink-0 pt-1">
-              <div className="text-[12px] font-medium text-white/70">Rotation</div>
+              <div className="text-[12px] font-medium text-white/70">Entrance View</div>
               <div className="relative mt-1 inline-flex items-center">
                 <select
                   className="h-8 appearance-none rounded-[10px] bg-white/10 px-3 pr-9 text-sm font-medium text-white outline-none ring-1 ring-white/15 transition hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/40"
-                  value={rotationDeg}
-                  onChange={(e) => onRotationChange(Number(e.target.value) as RotationDeg)}
+                  value={entranceView}
+                  onChange={(e) => onEntranceViewChange(e.target.value as EntranceView)}
                 >
-                  <option value={0}>Standard</option>
-                  <option value={90}>90°</option>
-                  <option value={180}>180°</option>
-                  <option value={270}>270°</option>
+                  <option value="bottom">{ENTRANCE_VIEW_LABEL.bottom}</option>
+                  <option value="left">{ENTRANCE_VIEW_LABEL.left}</option>
+                  <option value="top">{ENTRANCE_VIEW_LABEL.top}</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 size-4 opacity-80" />
               </div>

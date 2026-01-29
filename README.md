@@ -1,11 +1,11 @@
 
-  # UML Diagram for Warehouse System
+# Jillamy DTX Warehouse SMART Floor Plan
 
-  This is a code bundle for UML Diagram for Warehouse System. The original project is available at https://www.figma.com/design/7ybNz9JPsiAs2sjFk5NucH/UML-Diagram-for-Warehouse-System.
+This repository contains the Jillamy DTX Warehouse SMART Floor Plan web app.
 
-  ## Running the code
+## Run locally
 
-  Run `npm i` to install the dependencies.
-
-  Run `npm run dev` to start the development server.
-  # jillamy-dtx-floor-plan
+```bash
+npm install
+npm run dev
+```
