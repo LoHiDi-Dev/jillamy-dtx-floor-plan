@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "./ui/card";
 import { cn } from "./ui/utils";
-import type { RotationDeg } from "../types";
+import type { EntranceView } from "../types";
 
 type RowCode = "I" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
@@ -113,20 +113,27 @@ function formatLocation(loc: SelectedLocation) {
   return `${loc.row}-${loc.column}-${loc.spot}`;
 }
 
-export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: RotationDeg }) {
+export function WarehouseFloorPlan({
+  entranceView = "bottom",
+  isTablet = false,
+}: {
+  entranceView?: EntranceView;
+  isTablet?: boolean;
+}) {
   const [selected, setSelected] = React.useState<SelectedLocation | null>(null);
   const [hovered, setHovered] = React.useState<{ row: RowCode; column: number } | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const viewportRef = React.useRef<HTMLDivElement | null>(null);
 
   // Keep selection view + grid the same width to avoid “stretching” when a spot is selected.
   const CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[1200px]";
 
   // Readability: each cell contains 9 spot “slices” (1–9). Keep enough height + font size
   // so the numbers remain readable across common desktop resolutions.
-  const CELL_HEIGHT_CLASS = "h-[clamp(96px,12vh,160px)]";
+  const CELL_HEIGHT_CLASS = isTablet ? "h-[clamp(120px,14vh,220px)]" : "h-[clamp(96px,12vh,160px)]";
   // Don’t stretch the plan; keep a natural width and center it.
   const GRID_WIDTH_CLASS = "w-full justify-center";
-  const SPOT_TEXT_CLASS = "text-[clamp(10px,0.9vw,14px)]";
+  const SPOT_TEXT_CLASS = isTablet ? "text-[clamp(12px,1.2vw,16px)]" : "text-[clamp(10px,0.9vw,14px)]";
 
   const selectedCellCode = React.useMemo(() => {
     if (!selected) return null;
@@ -145,40 +152,48 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
     return { seconds, label: formatMinutesSeconds(seconds) };
   }, [selected]);
 
-  // Clear selection when user clicks outside the floor plan area.
+  // If a spot is selected, clicking outside the scrollable plan viewport clears the spot
+  // (keeps row/aisle selection).
   React.useEffect(() => {
-    if (!hasSelection) return;
+    if (!selected?.spot) return;
 
     function onPointerDown(e: PointerEvent) {
-      const root = containerRef.current;
+      const viewport = viewportRef.current;
       const target = e.target as Node | null;
-      if (!root || !target) return;
-      if (!root.contains(target)) {
-        setSelected(null);
-      }
+      if (!viewport || !target) return;
+      if (!viewport.contains(target)) setSelected((prev) => (prev ? { ...prev, spot: null } : prev));
     }
 
     window.addEventListener("pointerdown", onPointerDown, { capture: true });
     return () => window.removeEventListener("pointerdown", onPointerDown, { capture: true } as any);
-  }, [hasSelection]);
+  }, [selected?.spot]);
 
-  const mapTransform = React.useMemo(() => {
-    if (!rotationDeg) return undefined;
-    return `rotate(${rotationDeg}deg)`;
-  }, [rotationDeg]);
+  const ROW_ORDER_BOTTOM_TO_TOP: RowCode[] = ["G", "F", "E", "D", "C", "B", "A", "I"];
+  const ROWS_TOP_TO_BOTTOM_DEFAULT: RowCode[] = ["I", "A", "B", "C", "D", "E", "F", "G"];
 
-  const rotationStyle = React.useMemo<React.CSSProperties>(() => {
-    const counter = `${-rotationDeg}deg`;
+  function getLayoutForView(view: EntranceView) {
+    if (view === "top") {
+      return {
+        entranceEdge: "top" as const,
+        rows: ROW_ORDER_BOTTOM_TO_TOP,
+        aisles: [...COLS].reverse(),
+      };
+    }
+    if (view === "left") {
+      return {
+        entranceEdge: "left" as const,
+        rows: ROW_ORDER_BOTTOM_TO_TOP,
+        aisles: COLS,
+      };
+    }
     return {
-      transform: rotationDeg ? `rotate(${rotationDeg}deg)` : undefined,
-      transformOrigin: "center center",
-      // Used to keep text upright while the map rotates.
-      ["--counter-rot" as any]: counter,
+      entranceEdge: "bottom" as const,
+      rows: ROWS_TOP_TO_BOTTOM_DEFAULT,
+      aisles: COLS,
     };
-  }, [rotationDeg]);
+  }
 
-  const UPRIGHT_LABEL_CLASS =
-    "inline-block [transform:rotate(var(--counter-rot))] [transform-origin:center]";
+  const layout = React.useMemo(() => getLayoutForView(entranceView), [entranceView]);
 
   return (
     <div ref={containerRef} className="flex w-full flex-col gap-4 pb-6">
@@ -221,6 +236,40 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                   </div>
                 ) : null}
               </div>
+
+              {/* Tablet-friendly spot picker (large tap targets) */}
+              {isTablet ? (
+                <div className="rounded-[12px] border border-[#e2e8f0] bg-white p-3">
+                  <div className="text-sm font-semibold text-[#0f172b]">Choose Spot</div>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {SPOTS.map((spotValue) => {
+                      const active = selected?.spot === spotValue;
+                      return (
+                        <button
+                          key={`tablet-spot-${spotValue}`}
+                          type="button"
+                          onClick={() => setSelected({ row: selected!.row, column: selected!.column, spot: spotValue })}
+                          className={cn(
+                            "h-11 min-h-[44px] rounded-[12px] border text-sm font-semibold transition-colors touch-manipulation",
+                            active
+                              ? "border-[#1e3a8a] bg-[#1e3a8a] text-white"
+                              : "border-[#e2e8f0] bg-[#f8fafc] text-[#1e3a8a] hover:bg-[#eef2ff]",
+                          )}
+                        >
+                          {spotValue}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setSelected({ row: selected!.row, column: selected!.column, spot: null })}
+                      className="col-span-3 h-11 min-h-[44px] rounded-[12px] border border-[#e2e8f0] bg-white text-sm font-semibold text-[#45556c] transition hover:bg-[#f8fafc] touch-manipulation"
+                    >
+                      No Spot (cell only)
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>
@@ -244,7 +293,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
               )}
             >
               Status: {hasSelection ? "Active" : "Not Active"}
-            </div>
+              </div>
           </div>
           <CardDescription className="text-[#45556c]">
             Rows: I, A–G • Aisles: 1–9 • Spots: 1–9
@@ -254,6 +303,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
         <CardContent className="p-3 sm:p-4">
           <div className="flex flex-col gap-4">
             <div
+              ref={viewportRef}
               className={cn(
                 "w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]",
                 hasSelection ? "max-h-[calc(100vh-420px)]" : "max-h-[calc(100vh-320px)]",
@@ -278,33 +328,168 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                 </div>
               ) : null}
 
-              <div className="mx-auto w-fit max-w-full">
+              {entranceView === "left" ? (
+                <div className="mx-auto w-fit max-w-full">
+                  <div className="flex items-stretch gap-2">
+                    <div className="flex w-12 items-center justify-center rounded-md bg-black px-2 text-center text-xs font-semibold text-white [writing-mode:vertical-rl]">
+                      The side EAST warehouse entrance
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div
+                        className={cn(
+                          "grid gap-1",
+                          "grid-cols-[56px_repeat(8,minmax(72px,88px))] sm:grid-cols-[72px_repeat(8,minmax(84px,96px))]",
+                        )}
+                      >
+                        <div className="h-10" />
+                        {layout.rows.map((r) => (
+                          <div
+                            key={`left-row-${r}`}
+                            className={cn(
+                              "flex h-9 items-center justify-center rounded-md border bg-[#f8fafc] text-xs font-semibold sm:h-10 sm:text-sm",
+                              hasSelection && highlightedRow === r
+                                ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
+                                : "border-[#e2e8f0] text-[#0f172b]",
+                            )}
+                          >
+                            {r}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div
+                        className={cn(
+                          "grid gap-1",
+                          "grid-cols-[56px_repeat(8,minmax(72px,88px))] sm:grid-cols-[72px_repeat(8,minmax(84px,96px))]",
+                        )}
+                      >
+                        {layout.aisles.map((aisle) => (
+                          <React.Fragment key={`left-aisle-${aisle}`}>
+                            <div
+                              className={cn(
+                                cn(
+                                  "flex items-center justify-center rounded-md border bg-[#f8fafc] text-xs font-semibold transition-colors sm:text-sm",
+                                  CELL_HEIGHT_CLASS,
+                                ),
+                                hasSelection && highlightedCol === aisle
+                                  ? "border-[#1e3a8a] bg-[#dbeafe] text-[#1e3a8a]"
+                                  : "border-[#e2e8f0] text-[#45556c]",
+                              )}
+                            >
+                              {aisle}
+                            </div>
+
+                            {layout.rows.map((row) => {
+                              const valid = isValidCell(row, aisle);
+                              const isSelected = selected?.row === row && selected?.column === aisle;
+                              const spot = isSelected ? selected?.spot : null;
+                              if (!valid) {
+                                return (
+                                  <div
+                                    key={`${row}-${aisle}-invalid`}
+                                    aria-hidden="true"
+                                    className={cn(
+                                      cn("relative flex items-center justify-center rounded-md border", CELL_HEIGHT_CLASS),
+                                      "border-[#e2e8f0] bg-[#e2e8f0]/60",
+                                    )}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <div
+                                  key={`${row}-${aisle}`}
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label={`${row}-${aisle}`}
+                                  aria-pressed={isSelected}
+                                  onMouseEnter={() => setHovered({ row, column: aisle })}
+                                  onMouseLeave={() => setHovered(null)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setSelected({ row, column: aisle, spot: null });
+                                    }
+                                  }}
+                                  onClick={() => setSelected({ row, column: aisle, spot: null })}
+                                  className={cn(
+                                    cn("relative rounded-md border bg-white transition-colors", CELL_HEIGHT_CLASS),
+                                    "touch-manipulation",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd] focus-visible:ring-offset-2",
+                                    isSelected && crosshairOn && "border-[#1e3a8a] shadow-[0px_1px_3px_0px_rgba(30,58,138,0.15)]",
+                                  )}
+                                >
+                                  <div
+                                    className={cn(
+                                      "absolute inset-1 grid grid-rows-9 gap-px overflow-hidden rounded-[6px]",
+                                      isSelected ? "bg-[#93c5fd]" : "bg-[#e2e8f0]",
+                                    )}
+                                  >
+                                    {SPOTS.map((spotValue) => {
+                                      const active = isSelected && spot === spotValue;
+                                      return (
+                                        <button
+                                          key={`${row}-${aisle}-spot-${spotValue}`}
+                                          type="button"
+                                          aria-label={`${row}-${aisle}-${spotValue}`}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelected({ row, column: aisle, spot: spotValue });
+                                          }}
+                                          className={cn(
+                                            cn(
+                                              "flex w-full items-center justify-start px-2 leading-none tabular-nums",
+                                              SPOT_TEXT_CLASS,
+                                            ),
+                                            "touch-manipulation",
+                                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd]",
+                                            isSelected ? "bg-white text-[#1e3a8a]" : "bg-white text-[#62748e]",
+                                            active && "bg-[#1e3a8a] text-white",
+                                          )}
+                                        >
+                                          <span className="pointer-events-none select-none">{spotValue}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {entranceView !== "left" ? (
+                <div className="mx-auto w-fit max-w-full">
+                {layout.entranceEdge === "top" ? (
+                  <div className="mb-4 w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
+                    The side EAST warehouse entrance
+                  </div>
+                ) : null}
                 <div
-                  className="origin-center"
-                  style={{
-                    ...rotationStyle,
-                    transformOrigin: "center center",
-                    transition: "transform 180ms ease",
-                  }}
+                  className={cn(
+                    "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
+                    GRID_WIDTH_CLASS,
+                  )}
                 >
-                  <div
-                    className={cn(
-                      "grid grid-cols-[24px_56px_repeat(9,minmax(72px,88px))_24px] gap-1 sm:grid-cols-[32px_72px_repeat(9,minmax(84px,96px))_32px] sm:gap-2",
-                      GRID_WIDTH_CLASS,
-                    )}
-                  >
               {/* Orientation label */}
               <div />
               <div />
               <div className="col-span-9 py-1 text-center text-xs font-semibold text-[#1e3a8a] sm:text-sm">
-                <span className={UPRIGHT_LABEL_CLASS}>This side WEST</span>
+                This side WEST
               </div>
               <div />
 
               {/* Sticky top-left spacers (keep header row solid when scrolling) */}
               <div className="sticky left-0 top-0 z-40 h-10 bg-white/95 backdrop-blur" />
               <div className="sticky left-[24px] top-0 z-40 h-10 bg-white/95 backdrop-blur sm:left-[32px]" />
-                {COLS.map((c) => (
+                {layout.aisles.map((c) => (
                   <div
                     key={`col-${c}`}
                     className={cn(
@@ -314,17 +499,17 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                         : "border-[#e2e8f0] bg-[#f8fafc] text-[#45556c]",
                     )}
                   >
-                    <span className={UPRIGHT_LABEL_CLASS}>{c}</span>
+                    {c}
         </div>
                 ))}
               <div className="h-10" />
 
-                  {ROWS.map((r) => (
+                  {layout.rows.map((r) => (
                     <React.Fragment key={`row-${r}`}>
                     {r === "I" ? (
                       <div className="sticky left-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
                         <div className="select-none px-1 text-xs font-semibold text-[#880e4f] sm:text-sm">
-                          <span className={UPRIGHT_LABEL_CLASS}>This side SOUTH</span>
+                          This side SOUTH
                         </div>
                       </div>
                     ) : null}
@@ -341,10 +526,10 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                           : "border-[#e2e8f0] bg-[#f8fafc] text-[#0f172b]",
                       )}
                     >
-                      <span className={UPRIGHT_LABEL_CLASS}>{r}</span>
+                      {r}
       </div>
 
-                    {COLS.map((c) => {
+                    {layout.aisles.map((c) => {
                       const valid = isValidCell(r, c);
                       const isSelected = selected?.row === r && selected?.column === c;
                       const isHovered = hovered?.row === r && hovered?.column === c;
@@ -380,6 +565,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                           onClick={() => setSelected({ row: r, column: c, spot: null })}
                           className={cn(
                             cn("relative rounded-md border bg-white transition-colors", CELL_HEIGHT_CLASS),
+                            "touch-manipulation",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd] focus-visible:ring-offset-2",
                             // Only highlight the actual selected cell (not the entire row/column of cells)
                             isSelected && crosshairOn && "border-[#1e3a8a] shadow-[0px_1px_3px_0px_rgba(30,58,138,0.15)]",
@@ -409,14 +595,13 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                                       "flex w-full items-center justify-start px-2 leading-none tabular-nums",
                                       SPOT_TEXT_CLASS,
                                     ),
+                                    "touch-manipulation",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#93c5fd]",
                                     isSelected ? "bg-white text-[#1e3a8a]" : "bg-white text-[#62748e]",
                                     active && "bg-[#1e3a8a] text-white",
                                   )}
                                 >
-                                  <span className={cn("pointer-events-none select-none", UPRIGHT_LABEL_CLASS)}>
-                                    {spotValue}
-                                  </span>
+                                  <span className="pointer-events-none select-none">{spotValue}</span>
                                 </button>
                               );
                             })}
@@ -428,7 +613,7 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                     {r === "I" ? (
                       <div className="sticky right-0 z-40 row-span-9 flex items-center justify-center bg-white/95 backdrop-blur">
                         <div className="select-none px-1 text-xs font-semibold text-[#0f172b] sm:text-sm">
-                          <span className={UPRIGHT_LABEL_CLASS}>This side North</span>
+                          This side North
                         </div>
                       </div>
                     ) : null}
@@ -436,22 +621,10 @@ export function WarehouseFloorPlan({ rotationDeg = 0 }: { rotationDeg?: Rotation
                   ))}
                 </div>
 
-                {/* Entrance edge + note are part of the rotated map geometry; text stays upright */}
-                <div className="mt-6 space-y-3">
-                  <div className="w-full rounded-md bg-black py-2 text-center text-xs font-semibold text-white sm:text-sm">
-                    <span className={UPRIGHT_LABEL_CLASS}>The side EAST warehouse entrance</span>
-                  </div>
-
-                  <div className="mx-auto max-w-[720px] rounded-sm border border-[#94a3b8] bg-[#eef2f7] px-3 py-2 text-center text-[10px] leading-[14px] text-[#334155] sm:text-xs">
-                    <span className={UPRIGHT_LABEL_CLASS}>
-                      L-shaped layout: Row I (Aisles 1–9) • Rows A–G (Aisles 1–6) • Spots 1–9 •
-                      Aisles on WEST (top) • Rows on SOUTH (left)
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
+              ) : null}
           </div>
+
           </div>
         </CardContent>
       </Card>
