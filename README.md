@@ -1,7 +1,12 @@
-
 # Jillamy DTX Warehouse SMART Floor Plan
 
-This repository contains the Jillamy DTX Warehouse SMART Floor Plan web app.
+Single-page interactive warehouse floor plan built with **React + TypeScript + Vite + Tailwind**.
+
+**Developer:** Joel S. Premier
+
+## Requirements
+
+- Node.js (LTS recommended)
 
 ## Run locally
 
@@ -9,3 +14,17 @@ This repository contains the Jillamy DTX Warehouse SMART Floor Plan web app.
 npm install
 npm run dev
 ```
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Notes
+
+- **Location format**: `ROW-AISLE-SPOT`
+- **Rows**: `I, A–G`
+- **Aisles**: `1–9`
+- **Spots**: `1–9`

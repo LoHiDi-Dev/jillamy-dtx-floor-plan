@@ -1,3 +1,4 @@
-# Attributions
+This project uses:
 
-This project uses third-party software and assets under their respective licenses.
+- [Inter](https://fonts.google.com/specimen/Inter) (Google Fonts)
+- [lucide-react](https://github.com/lucide-icons/lucide) (icons)
